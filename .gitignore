@@ -1,0 +1,13 @@
+server/db.sqlite3
+server/db.sqlite3.bak
+server/node_modules
+server/data/
+server/.env
+server/.env.*
+!server/.env.example
+frontend/node_modules
+.vscode
+.claude
+.agents
+AGENTS.MD
+dist/

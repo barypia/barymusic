@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="pl" class="h-dvh overflow-hidden">
+<head>
+	<meta charset="UTF-8">
+	<script src="js/core/settings-store.js"></script>
+	<script>if (!settings.blurEnabled) document.documentElement.classList.add("no-blur");</script>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title data-i18n="common.brand_name"></title>
+	<link rel="icon" type="image/svg+xml" href="favicon.svg">
+	<link rel="icon" type="image/x-icon" href="favicon.ico" sizes="16x16 32x32 48x48 64x64">
+	<link rel="stylesheet" href="vendor/tailwind/tailwind.css">
+	<script src="vendor/lucide/lucide.min.js" defer></script>
+	<script src="vendor/i18next/i18next.min.js" defer></script>
+	<script src="vendor/i18next/i18nextHttpBackend.min.js" defer></script>
+	<script src="vendor/i18next/i18nextBrowserLanguageDetector.min.js" defer></script>
+
+	<script src="js/core/i18n.js" defer></script>
+	<script src="js/core/init.js" defer></script>
+</head>
+<body class="w-full h-full m-0 p-0 flex flex-col overflow-hidden bg-[#141414] text-fg select-none">
+	<div class="fixed hidden rounded-[14px] popup-backdrop active:block z-99" id="popupBackdrop"></div>
+	<div class="header flex flex-row p-0.5 px-2 h-12 sticky top-0 items-center w-full shrink-0 z-101" id="mainHeader">
+		<div class="flex flex-row items-center" id="headerLeft">
+			<div class="p-2.25">
+				<img src="img/barymusic_white.svg" class="w-8 h-8">
+			</div>
+			<div class="w-px h-5 bg-white/15 ml-1 mr-3"></div>
+			<div class="flex items-center gap-1">
+				<button class="btn secondary" onclick="openModal('settingsModal'); const _t = document.querySelector('#settingsModal .modal-tabs .modal-tab'); if (_t) switchModalTab('settings', _t.dataset.tab, _t);">
+					<i data-lucide="settings"></i>
+				</button>
+				<button class="btn secondary" id="fullscreenBtn" onclick="toggleFullscreen()">
+					<i data-lucide="maximize"></i>
+				</button>
+				<button onclick="toggleOutputFullscreen()" class="btn secondary ml-1 hidden" id="fullscreenToggleOutput">
+					<i data-lucide="maximize"></i>
+				</button>
+			</div>
+		</div>
+
+		<div class="flex items-center justify-center pointer-events-none absolute left-0 right-0 top-0 bottom-0 z-0" id="headerCenter" style="display:none;"></div>
+
+		<div class="flex gap-1 ml-auto" id="headerRightBtns">
+			<div class="relative">
+				<button class="btn secondary mr-1" type="button" id="wsPopupBtn" data-dropdown-toggle="wsPopup" aria-expanded="false" onclick="openWsPopup()">
+					<i data-lucide="wifi"></i>
+				</button>
+				<div class="p-2 popup" id="wsPopup">
+					<div class="flex items-center justify-between p-2 border-bottom">
+						<div data-i18n="panels.connection_title"></div>
+						<button class="btn-close" onclick="closeWsPopup()"><i data-lucide="x"></i></button>
+					</div>
+					<div class="flex flex-col px-4 pt-2 pb-2 text-center">
+						<span class="text-white font-medium" id="wsStatus"></span>
+						<span class="text-white font-medium" id="wsStatusDesc"></span>
+					</div>
+					<div id="wsActionSection" class="flex-col hidden gap-2 px-4 pt-2 pb-2 border-top">
+						<button class="justify-center btn secondary" id="wsLeaveChannelBtn" onclick="channelExit()" data-i18n="connection.leave_channel"></button>
+						<button class="justify-center btn secondary hidden" id="wsExitLibraryBtn" onclick="exitLibraryMode()" data-i18n="connection.exit_library"></button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div id="songModal" class="modal" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h1 id="songModalTitle" class="text-xl modal-title" data-i18n="songs.edit_title"></h1>
+					<button type="button" class="btn-close" data-modal-dismiss data-i18n-aria-label="common.close" data-i18n-title="common.close"><i data-lucide="x"></i></button>
+				</div>
+				<div class="modal-tabs">
+					<button type="button" class="modal-tab active" data-tab="info" onclick="switchModalTab('song', 'info', this)" data-i18n="songs.tab_info"></button>
+					<button type="button" class="modal-tab" data-tab="files" onclick="switchModalTab('song', 'files', this)" data-i18n="songs.tab_files"></button>
+					<button type="button" class="modal-tab" data-tab="lyrics" onclick="switchModalTab('song', 'lyrics', this)" data-i18n="songs.tab_lyrics"></button>
+				</div>
+				<div class="modal-body">
+					<form id="songForm" onsubmit="submitSongModal(event)" novalidate>
+						<input type="hidden" id="songEditId">
+						<div id="song-tab-info" class="flex flex-col gap-2">
+							<div class="list-group">
+								<div class="list-item">
+									<div class="list-item__text">
+										<label for="songTitle" class="list-item__title" data-i18n="songs.title_label"></label>
+									</div>
+									<input type="text" id="songTitle" required data-i18n="songs.title_placeholder">
+								</div>
+								<div class="list-item">
+									<div class="list-item__text">
+										<label for="songYear" class="list-item__title" data-i18n="songs.year_label"></label>
+									</div>
+									<input type="number" id="songYear" data-i18n="songs.year_placeholder">
+								</div>
+								<div class="list-item">
+									<div class="list-item__text">
+										<label for="songComposer" class="list-item__title" data-i18n="songs.composer_label"></label>
+									</div>
+									<input type="text" id="songComposer" data-i18n="songs.composer_placeholder">
+								</div>
+							</div>
+							<div class="list-group">
+								<div class="list-item">
+									<div class="list-item__text">
+										<label for="songKey" class="list-item__title" data-i18n="songs.key_label"></label>
+									</div>
+									<input type="text" id="songKey" data-i18n="songs.key_placeholder">
+								</div>
+								<div class="list-item">
+									<div class="list-item__text">
+										<label for="songTimeSignature" class="list-item__title" data-i18n="songs.time_signature_label"></label>
+									</div>
+									<input type="text" id="songTimeSignature" data-i18n="songs.time_signature_placeholder">
+								</div>
+								<div class="list-item">
+									<div class="list-item__text">
+										<label for="songBpm" class="list-item__title" data-i18n="songs.bpm_label"></label>
+									</div>			
+									<input type="number" id="songBpm" data-i18n="songs.bpm_placeholder">
+								</div>
+							</div>
+							<div class="list-group">
+								<div class="list-item">
+									<div class="list-item__text">
+										<label class="list-item__title" data-i18n="songs.tags_label"></label>
+									</div>
+									<div class="tag-editor" id="songTagEditor" onclick="tagEditorFocus(this)">
+										<input type="text" id="songType" class="tag-editor-input" data-i18n="songs.tags_placeholder" autocomplete="off" onkeydown="tagEditorKeydown(event, 'songTagEditor')" oninput="tagEditorInput(event, 'songTagEditor')">
+									</div>
+								</div>
+							</div>
+
+							<div class="list-group">
+								<div class="list-item">
+									<div class="list-item__text">
+										<label class="list-item__title" data-i18n="songs.public_label"></label>
+										<label class="list-item__desc" data-i18n="songs.public_description"></label>
+									</div>
+									<div class="toggle off" role="switch" id="songIsPublic" aria-checked="true" tabindex="0" onclick="toggleSongPublic('edit', this)" onkeydown="if(event.key==='Enter'||event.key===' ')toggleSongPublic('edit',this)">
+										<div class="toggle-thumb"></div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div id="song-tab-files" class="hidden flex-col">
+							<div class="list-group mb-2">
+								<div class="list-item">
+									<div class="list-item__text">
+										<div class="list-item__title" data-i18n="songs.audio_label"></div>
+										<div id="songAudioStatus" class="list-item__desc"></div>
+									</div>
+									<label type="button" id="songAudioDelete" class="btn danger hidden" onclick="markFileForDeletion('audio')">
+										<i data-lucide="trash-2"></i><span data-i18n="common.delete"></span>
+									</label>
+									<label for="songAudioFile" class="btn success">
+										<i data-lucide="upload"></i><span data-i18n="songs.upload"></span>
+										<input type="file" id="songAudioFile" accept=".mp3,audio/mpeg" class="file-upload-input" onchange="updateFileLabel(this)">
+									</label>
+								</div>
+							</div>
+							<div class="list-group">
+								<div class="list-item">
+									<div class="list-item__text">
+										<div class="list-item__title" data-i18n="songs.sheets_label"></div>
+										<div id="songSheetsStatus" class="list-item__desc"></div>
+									</div>
+									<label type="button" id="songSheetsDelete" class="btn danger hidden" onclick="markFileForDeletion('sheets')">
+										<i data-lucide="trash-2"></i><span data-i18n="common.delete"></span>
+									</label>
+									<label for="songSheetsFile" class="btn success">
+										<i data-lucide="upload"></i><span data-i18n="songs.upload"></span>
+										<input type="file" id="songSheetsFile" accept="image/*" class="file-upload-input" onchange="updateFileLabel(this)">
+									</label>
+								</div>
+							</div>
+						</div>
+						<div id="song-tab-lyrics" class="hidden">
+							<div class="flex gap-3">
+								<div id="songMediaCol" class="hidden flex-col gap-2 w-100 shrink-0 justify-between">
+									<div id="songSheetViewerWrap" class="hidden flex-col gap-1">
+										<div class="view-header-controls sheet-floating-controls top-1! right-1!">
+											<button type="button" class="btn small" data-action="editor-zoom-reset" onclick="editModalZoomSheet(0)" data-i18n-title="songs.zoom_fit"><i data-lucide="maximize-2" class="w-3.5 h-3.5"></i></button>
+											<button type="button" class="btn small" onclick="editModalZoomSheet(-0.15)" data-i18n-title="common.zoom_out"><i data-lucide="zoom-out" class="w-3.5 h-3.5"></i></button>
+											<button type="button" class="btn small" onclick="editModalZoomSheet(0.15)" data-i18n-title="common.zoom_in"><i data-lucide="zoom-in" class="w-3.5 h-3.5"></i></button>
+										</div>
+										<div id="songSheetViewer" class="relative overflow-hidden rounded-lg bg-blue-50 cursor-grab active:cursor-grabbing max-h-[calc(100vh-400px)]"></div>
+									</div>
+									<div id="songAudioPlayer" class="hidden mt-auto">
+										<audio id="editModalAudioPlayer" preload="metadata">
+											<source src="" type="audio/mpeg">
+										</audio>
+										<div class="audio-panel-body">
+											<button type="button" class="btn" id="editModalPlayPauseBtn" onclick="editModalTogglePlayPause()">
+												<i data-lucide="play"></i>
+											</button>
+											<span class="text-sm audio-time text-(--text-secondary) shrink-0" id="editModalCurrentTime">0:00</span>
+											<div class="flex items-center grow" id="editModalProgressContainer">
+												<div class="w-full audio-progress-bar" id="editModalProgressBar">
+													<div class="audio-progress-fill" id="editModalProgressFill"></div>
+												</div>
+											</div>
+											<span class="text-sm audio-time text-(--text-secondary) shrink-0" id="editModalTotalTime">0:00</span>
+										</div>
+									</div>
+								</div>
+								<div class="flex flex-col min-w-0 grow">
+									<div class="lyrics-tab-bar flex gap-1 mb-1.75 items-center">
+										<button type="button" class="lyrics-tab modal-tab active" onclick="switchLyricsTab('songLyricsEditor', 'visual', this)" data-i18n="songs.tab_visual"></button>
+										<button type="button" class="lyrics-tab modal-tab" onclick="switchLyricsTab('songLyricsEditor', 'json', this);" data-i18n="songs.tab_json"></button>
+										<div class="view-header-controls sheet-floating-controls static! ml-auto!" id="songEditorTranspose">
+											<button type="button" class="btn small" data-i18n-title="songs.transpose_down" data-editor-transpose-down="songLyricsEditor" onclick="editorTransposeBake('songLyricsEditor', -1)"><i data-lucide="minus"></i></button>
+											<span class="transpose-display text-secondary" data-editor-transpose-display="songLyricsEditor">0</span>
+											<button type="button" class="btn small" data-i18n-title="songs.transpose_up" data-editor-transpose-up="songLyricsEditor" onclick="editorTransposeBake('songLyricsEditor', 1)"><i data-lucide="plus"></i></button>
+										</div>
+									</div>
+									<div class="lyrics-editor-wrap overflow-x-hidden border border-blue-500/10 rounded-lg h-[calc(100vh-396px)]" data-scroll-fade>
+										<div id="songLyricsEditor" class="flex flex-col	overflow-y-auto"></div>
+										<textarea id="songLyricsJson" class="lyrics-json-editor hidden w-full h-[calc(100%-14px)] text-[0.8rem] leading-relaxed px-3 py-2.5 bg-black/50 text-fg border-none! resize-none!" spellcheck="false" placeholder="{}"></textarea>
+									</div>
+									<div class="flex gap-2 mt-2">
+										<button type="button" id="songAddSectionBtn" class="btn secondary grow" onclick="addEditorSection('songLyricsEditor')">
+											<i data-lucide="plus" class="w-4 h-4"></i> <span data-i18n="songs.add_section"></span>
+										</button>
+										<button type="button" id="songImportMusicXmlBtn" class="btn secondary grow" onclick="importLyricsFromMusicXml('song')" data-i18n-title="songs.generate_from_musicxml">
+											<i data-lucide="file-code-2" class="w-4 h-4"></i> <span data-i18n="songs.import_musicxml"></span>
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</form>
+				</div>
+				<div class="modal-footer flex-row!">
+					<button type="button" class="btn secondary" data-modal-dismiss data-i18n="common.cancel"></button>
+					<button type="submit" form="songForm" class="btn primary" id="songSubmitBtn">
+						<p data-i18n="common.save" data-button-loading-label></p>
+						<i data-lucide="loader-circle"></i>
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="modal-backdrop modal-backdrop-visible"></div>
+	<div id="connectModal" class="modal modal-open" tabindex="-1" aria-hidden="false" data-modal-persistent>
+		<div class="modal-dialog modal-dialog-centered modal-dialog--setup modal-dialog-visible">
+			<div class="modal-content">
+
+				<div class="setup-branding">
+					<div class="p-2.25 setup-branding-bg">
+						<img src="img/barymusic.svg" class="w-8 h-8">
+					</div>
+					<div class="flex flex-col">
+						<div class="flex items-center gap-2">
+							<span class="text-base font-bold" data-i18n="common.brand_name"></span>
+							<span class="setup-version-badge setup-version-badge--skeleton" id="setup-version-badge"></span>
+						</div>
+						<div class="hidden text-xs text-(--text-secondary) mt-1" id="connectModalSubtitle">
+							<span class="setup-skeleton-line h-4"></span>
+							<span class="setup-skeleton-line h-4 mt-0.5" id="connectModalLoggedInSkeleton"></span>
+						</div>
+						<div class="text-xs text-(--text-secondary) mt-0.5 hidden gap-0.75" id="connectModalLoggedIn">
+							<span data-i18n="auth.logged_in_as"></span>
+							<span class="text-(--text-primary)" id="connectModalUsername"></span>
+						</div>
+					</div>
+					<div class="ml-auto">
+						<select id="languageSetup" data-setting="language">
+							<option value="pl" data-i18n="common.language_polish"></option>
+							<option value="en" data-i18n="common.language_english"></option>
+						</select>
+					</div>
+				</div>
+
+				<div class="px-6 py-5 flex flex-col gap-3" id="connectModalBody">
+					<h1 class="setup-screen-title" id="connectModalTitle" data-i18n="connection.welcome"></h1>
+
+					<div id="connectScreenLoading" class="connect-screen modal-body p-0! flex flex-col gap-2">
+						<div class="list-group">
+							<button class="list-item w-full text-left" aria-hidden="true">
+								<div class="setup-option-icon">
+									<div class="setup-skeleton-line w-8.5 h-8.5"></div>
+								</div>
+								<div class="list-item__text">
+									<div class="setup-skeleton-line w-26/100 h-[0.9rem]"></div>
+									<div class="setup-skeleton-line w-74/100 h-[0.775rem]"></div>
+								</div>
+							</button>
+							<button class="list-item w-full text-left" aria-hidden="true">
+								<div class="setup-option-icon">
+									<div class="setup-skeleton-line h-8.5 w-8.5"></div>
+								</div>
+								<div class="list-item__text">
+									<div class="setup-skeleton-line w-20/100 h-[0.9rem]"></div>
+									<div class="setup-skeleton-line w-65/100 h-[0.775rem]"></div>
+								</div>
+							</button>
+						</div>
+						<div class="list-group">
+							<button class="list-item w-full text-left" aria-hidden="true">
+								<div class="setup-option-icon">
+									<div class="setup-skeleton-line w-8.5 h-8.5"></div>
+								</div>
+								<div class="list-item__text">
+									<div class="setup-skeleton-line w-32/100 h-[0.9rem]"></div>
+									<div class="setup-skeleton-line w-56/100 h-[0.775rem]"></div>
+								</div>
+							</button>
+						</div>
+					</div>
+
+					<div id="connectScreenMode" class="connect-screen hidden modal-body p-0! flex-col gap-2">
+						<div class="list-group">
+							<button class="list-item w-full text-left" id="connectJoinChannelBtn" onclick="connectModalShowChannels()">
+								<div class="list-item__icon"><i data-lucide="wifi"></i></div>
+								<div>
+									<div class="list-item__title" data-i18n="connection.join_channel_title"></div>
+									<div class="list-item__desc" data-i18n="connection.join_channel_description"></div>
+								</div>
+							</button>
+							<button class="list-item w-full text-left disabled:cursor-not-allowed disabled:opacity-45" id="connectCreateChannelBtn" onclick="connectModalCreateChannel()">
+								<div class="list-item__icon"><i data-lucide="plus"></i></div>
+								<div class="list-item__text">
+									<div class="list-item__title" data-i18n="connection.create_channel_title"></div>
+									<div class="list-item__desc" data-i18n="connection.create_channel_description"></div>
+								</div>
+							</button>
+						</div>
+						<div id="connectModeWsWarning" class="hidden items-start gap-3 p-3 card rounded-xl">
+							<div class="shrink-0 mt-0.5 text-warning"><i data-lucide="wifi-off" class="w-4 h-4"></i></div>
+							<div class="text-sm text-(--text-secondary)" data-i18n="connection.server_unavailable_description"></div>
+						</div>
+						<div class="list-group" id="libraryModeGroup">
+							<button class="list-item w-full text-left disabled:cursor-not-allowed disabled:opacity-45" id="libraryMode" onclick="enterLibraryMode()">
+								<div class="list-item__icon"><i data-lucide="eye"></i></div>
+								<div>
+									<div class="list-item__title" data-i18n="connection.browse_library_title"></div>
+									<div class="list-item__desc" data-i18n="connection.browse_library_description"></div>
+								</div>
+							</button>
+						</div>
+
+						<div id="connectLoginHint" class="hidden text-center pt-1">
+							<button class="text-sm text-accent hover:underline" onclick="openModal('loginModal')" data-i18n="connection.login_link"></button>
+							<span class="text-sm text-(--text-secondary)" data-i18n="connection.or"></span>
+							<button class="text-sm text-accent hover:underline" onclick="openModal('registerModal')" data-i18n="connection.register_link"></button>
+							<span class="text-sm text-(--text-secondary)" data-i18n="connection.login_required_copy"></span>
+						</div>
+						<div id="connectWebSocketError" class="hidden text-center pt-1">
+							<span class="text-sm text-(--text-secondary)" data-i18n="connection.websocket_error"></span>
+						</div>
+					</div>
+
+					<div id="connectScreenError" class="connect-screen hidden flex-col gap-3">
+						<div class="flex items-start gap-3 p-4 card rounded-2xl">
+							<div class="shrink-0 mt-0.5 text-red-400"><i data-lucide="server-off" class="w-4.5 h-4.5"></i></div>
+							<div class="flex flex-col gap-1">
+								<div class="text-base font-semibold text-white" data-i18n="connection.server_unavailable_title"></div>
+								<div class="text-sm text-(--text-secondary)" data-i18n="connection.server_unavailable_description"></div>
+							</div>
+						</div>
+						<button class="btn primary" onclick="location.reload()" data-i18n="connection.try_again"></button>
+					</div>
+
+					<div id="connectScreenChannels" class="connect-screen hidden flex-col gap-2">
+						<button class="setup-back-btn" onclick="connectModalShowMode()">
+							<i data-lucide="arrow-left"></i> <span data-i18n="common.back"></span>
+						</button>
+						<div id="loadingText" class="spinner-border text-(--text-primary)" role="status"></div>
+						<div id="noChannels" class="flex-row items-center hidden p-4 card rounded-2xl">
+							<div class="flex flex-col gap-1">
+								<div class="font-semibold text-white" data-i18n="connection.no_channels"></div>
+							</div>
+						</div>
+						<div id="channelsList" class="flex-col hidden gap-2"></div>
+					</div>
+
+					<div id="connectScreenCreateChannel" class="connect-screen hidden flex-col gap-2">
+						<button class="setup-back-btn" onclick="connectModalShowMode()">
+							<i data-lucide="arrow-left"></i> <span data-i18n="common.back"></span>
+						</button>
+						<div id="createNewChannel" class="flex-row items-center justify-between hidden p-3 card rounded-xl">
+							<input class="mr-2 bg-transparent border-0 flex-1 min-w-0 p-[0.375rem_0.75rem]!" type="text" name="channel_name" data-i18n="connection.new_channel_placeholder" id="newChannelName">
+							<button class="btn success" tyape="submit" onclick="createNewChannel()" data-i18n="connection.create_channel"></button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div id="registerModal" class="modal" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h1 class="text-xl modal-title" data-i18n="auth.register"></h1>
+					<button type="button" class="btn-close" data-modal-dismiss data-i18n-aria-label="common.close" data-i18n-title="common.close"><i data-lucide="x"></i></button>
+				</div>
+				<form onsubmit="register(); return false;">
+				<div class="flex flex-col items-center modal-body">
+					<input type="text" id="registerName" class="w-1/2 mt-4 mb-6" data-i18n="auth.username_placeholder">
+					<input type="password" id="registerPassword1" class="w-1/2 mb-2" data-i18n="auth.password_placeholder">
+					<input type="password" id="registerPassword2" class="w-1/2 mb-2" data-i18n="auth.confirm_password_placeholder">
+					<p id="registerInfo" class="text-center"></p>
+				</div>
+				<div class="flex flex-col items-center modal-footer">
+					<button type="submit" id="registerBtn" class="btn primary">
+						<p data-i18n="auth.register" data-button-loading-label></p>
+						<i data-lucide="loader-circle"></i>
+					</button>
+					<div id="bootstrapRestoreSection" class="hidden flex-col items-center gap-2 mt-2 border-t border-blue-500/10 w-full" style="padding-top: 0.75rem;">
+						<span class="list-item__desc" data-i18n="transfer.bootstrap_or_restore"></span>
+						<label class="btn secondary" for="bootstrapRestoreFile">
+							<i data-lucide="archive-restore"></i><span data-i18n="transfer.restore_backup"></span>
+							<input id="bootstrapRestoreFile" type="file" accept=".barymusic" class="hidden" onchange="restoreBootstrapBackup(this)">
+						</label>
+						<span id="bootstrapRestoreStatus" class="list-item__desc"></span>
+					</div>
+				</div>
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<div id="loginModal" class="modal" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h1 class="text-xl modal-title" data-i18n="auth.login"></h1>
+					<button type="button" class="btn-close" data-modal-dismiss data-i18n-aria-label="common.close" data-i18n-title="common.close"><i data-lucide="x"></i></button>
+				</div>
+				<form onsubmit="login(); return false;">
+					<div class="flex flex-col items-center modal-body">
+						<input type="text" id="loginName" class="w-1/2 mt-4 mb-2" data-i18n="auth.username_placeholder">
+						<input type="password" id="loginPassword" class="w-1/2" data-i18n="auth.password_placeholder">
+						<p id="loginInfo" class="text-center"></p>
+					</div>
+					<div class="flex flex-col items-center modal-footer">
+						<button type="submit" id="loginBtn" class="btn primary">
+							<p data-i18n="auth.login" data-button-loading-label></p>
+							<i data-lucide="loader-circle"></i>
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<div id="song" class="flex-row hidden min-h-0 overflow-visible spa-section grow p-2 pt-0">
+		<!-- Kolumna Lewa -->
+		<div class="column w-65 flex flex-col gap-3 rounded-l-2xl" id="leftColumn">
+			<div class="view-selector modal-tabs">
+				<button type="button" class="modal-tab view-selector-tab active" data-tab="songlist" onclick="switchModalTab('mainContainer', 'songlist', this); document.getElementById('mainContainer-tab-songlist').classList.add('flex')">
+					<i data-lucide="music"></i>
+					<p data-i18n="panels.songlist_title"></p>
+				</button>
+				<button type="button" class="modal-tab view-selector-tab" data-tab="setlists" onclick="switchModalTab('mainContainer', 'setlists', this); document.getElementById('mainContainer-tab-setlists').classList.add('flex')">
+					<i data-lucide="list-music"></i>
+					<p data-i18n="panels.setlists_title"></p>
+				</button>
+				<button type="button" class="modal-tab view-selector-tab" data-tab="queue" onclick="switchModalTab('mainContainer', 'queue', this); document.getElementById('mainContainer-tab-queue').classList.add('flex')">
+					<i data-lucide="list-ordered"></i>
+					<p data-i18n="panels.queue_title"></p>
+				</button>
+			</div>
+
+			<div class="view flex-1 flex" id="mainContainer-tab-songlist">
+				<div class="view-header" data-view="songlist">
+					<span class="view-title"></span>
+					<div class="view-header-controls">
+						<button class="btn small" data-action="add-song" data-i18n-title="common.add" aria-expanded="false"><i data-lucide="plus"></i></button>
+						<button class="btn small" data-action="filter-category" data-i18n-title="songs.filter_categories" aria-expanded="false"><i data-lucide="filter"></i></button>
+						<button class="btn small" data-action="search-songs" data-i18n-title="songs.search_title" aria-expanded="false"><i data-lucide="search"></i></button>
+					</div>
+				</div>
+				<div class="view-body" data-view="songlist">
+					<div class="shrink-0 search-field--collapsed" id="songlistSearchField">
+						<input type="search" data-songlist-search data-i18n="common.search" class="w-full">
+					</div>
+					<div class="view-content" data-songlist-view>
+					</div>
+				</div>
+			</div>
+
+			<div class="view flex-1 hidden" id="mainContainer-tab-setlists">
+				<div class="view-header" data-view="setlists">
+					<span class="view-title" data-i18n="panels.setlists_title"></span>
+					<div class="view-header-controls">
+						<button class="btn small hidden" data-action="add-setlist" data-i18n-title="setlists.create_title"><i data-lucide="plus"></i></button>
+						<button class="btn small" data-action="filter-setlists" data-i18n-title="setlists.filter_title" aria-expanded="false"><i data-lucide="filter"></i></button>
+						<button class="btn small" data-action="search-setlists" data-i18n-title="setlists.search_title" aria-expanded="false"><i data-lucide="search"></i></button>
+					</div>
+				</div>
+				<div class="view-body" data-view="setlists">
+					<div class="shrink-0 search-field--collapsed" id="setlistSearchField">
+						<input type="search" data-setlist-search data-i18n="common.search" class="w-full">
+					</div>
+					<div class="view-content" data-setlists-view>
+					</div>
+				</div>
+			</div>
+
+			<div class="view flex-1 hidden" id="mainContainer-tab-queue">
+				<div class="view-header">
+					<span class="view-title" data-i18n="panels.queue_title"></span>
+					<div class="view-header-controls">
+						<button class="btn small hidden" data-action="queue-deactivate" data-i18n-title="setlists.clear_queue"><i data-lucide="list-x"></i></button>
+						<button class="btn small hidden" data-action="queue-edit" data-i18n-title="setlists.edit_title"><i data-lucide="pencil"></i></button>
+						<button class="btn small danger hidden" data-action="queue-delete" data-i18n-title="setlists.delete"><i data-lucide="trash-2"></i></button>
+					</div>
+				</div>
+				<div class="view-body" data-view="queue">
+					<div class="view-content" data-queue-view>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Kolumna Środkowa -->
+		<div class="column flex flex-col flex-1" id="centerColumn">
+			<div class="modal-tabs flex-row! bg-transparent!">
+				<button type="button" class="modal-tab active" data-tab="double-view" onclick="switchModalTabDoubleView('mainContainer', this)" data-i18n="panels.sheets_lyrics_title"></button>
+				<button type="button" class="modal-tab" data-tab="sheets" onclick="setDoubleViewSettingsVisible(false); switchModalTab('mainContainer', 'sheets', this)" data-i18n="panels.sheets_title"></button>
+				<button type="button" class="modal-tab" data-tab="text" onclick="setDoubleViewSettingsVisible(false); switchModalTab('mainContainer', 'text', this)" data-i18n="panels.lyrics_title"></button>
+				<div class="ml-auto" id="doubleViewSettings">
+					<button class="btn secondary" onclick="document.getElementById('doubleViewController').classList.toggle('flex-col')"><i data-lucide="layout-grid"></i></button>
+					<button class="btn secondary" onclick="document.getElementById('mainContainer-tab-sheets').classList.toggle('order-changed')"><i data-lucide="arrow-left-right"></i></button>
+				</div>
+			</div>
+			<div class="flex flex-1 min-h-0" id="doubleViewController">
+				<div class="flex flex-col flex-1 min-h-0" id="mainContainer-tab-sheets">
+					<div class="view-body overflow-hidden!">
+						<div class="view-header-controls sheet-floating-controls hidden!">
+							<button class="btn small" data-action="zoom-reset" data-i18n-title="songs.zoom_fit" onclick="fitSheetToWidth();" aria-hidden="true" disabled><i data-lucide="maximize-2"></i></button>
+							<button class="btn small" data-action="zoom-out" data-i18n-title="common.zoom_out" onclick="zoomSheet(-0.1);"><i data-lucide="zoom-out"></i></button>
+							<button class="btn small" data-action="zoom-in" data-i18n-title="common.zoom_in" onclick="zoomSheet(0.1);"><i data-lucide="zoom-in"></i></button>
+						</div>
+						<div class="relative h-[calc(100%-1rem)] overflow-hidden rounded-xl m-1 panel-view" data-view="sheets">
+							<div id="sheetViewer" class="sheet-viewer cursor-grab active:cursor-grabbing absolute inset-0"></div>
+						</div>
+					</div>
+				</div>
+				<div class="flex flex-col flex-1 min-h-0" id="mainContainer-tab-text">
+					<div class="view-body">
+						<div class="view-header-controls sheet-floating-controls right-5! hidden!">
+							<button class="btn small" data-action="toggle-chords" data-chords-only onclick="toggleChords();"><i data-lucide="hash"></i></button>
+							<button class="btn small active" data-action="toggle-timestamps" data-i18n-title="songs.toggle_timestamps" onclick="toggleTimestamps();"><i data-lucide="clock"></i></button>
+							<button class="btn small active" data-action="toggle-scroll" onclick="toggleLyricScroll();"><i data-lucide="scroll-text"></i></button>
+						</div>
+						<div class="view-content rounded-l-xl m-1 pr-0.75" data-lyrics-grid data-scroll-fade></div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Kolumna Prawa -->
+		<div class="column w-95 shrink-0 h-full flex flex-col rounded-r-2xl" id="rightColumn">
+			<div class="p-1 pt-2 pl-2" id="rightColumnButtons">
+				<button class="btn secondary" data-i18n-title="connection.hide" onclick="toggleRightColumn()"><i data-lucide="panel-right"></i></button>
+			</div>
+			<div class="view flex flex-col pb-0! pt-0!" id="mainContainer-tab-socket">
+				<div class="view-header accordion-header">
+					<span class="view-title" data-i18n="panels.connection_title"></span>
+					<div class="view-header-controls hidden!">
+						<button class="btn small" data-action="channel-exit" data-i18n-title="connection.leave_channel"><i data-lucide="log-out"></i></button>
+					</div>
+				</div>
+				<div class="accordion-content pl-2" data-view="socket">
+					<div id="connection-channel" class="flex flex-col gap-3">
+						<div class="flex flex-col">
+							<div class="flex justify-center mb-2 gap-1">
+								<span id="channelValue">—</span>
+								<span>•</span>
+								<span id="pingValue">—</span>
+							</div>
+						</div>
+						<div class="flex flex-col text-sm">
+							<div class="mb-1 text-(--text-secondary)" data-i18n="connection.users_on_channel"></div>
+							<div id="channelUsersList" class="flex flex-col text-sm"></div>
+						</div>
+					</div>
+					<div id="connection-library" class="justify-center text-(--text-secondary) text-[1.25rem]" data-i18n="panels.socket_library_unavailable"></div>
+				</div>
+			</div>
+
+			<div class="view flex flex-col pb-0! pt-0!" id="mainContainer-tab-audio">
+				<div class="view-header accordion-header">
+					<span class="view-title" data-i18n="panels.audio_title"></span>
+					<div class="view-header-controls hidden!">
+						<button class="btn small active" data-action="toggle-auto-sync" data-i18n-title="songs.sync_with_lyrics"><i data-lucide="refresh-cw"></i></button>
+					</div>
+				</div>
+				<div class="accordion-content pl-2" data-view="audio">
+					<div class="audio-panel-body">
+						<audio id="audioPlayer" preload="metadata">
+							<source src="" type="audio/mpeg">
+						</audio>
+						<button class="btn shadow-none!" id="playPauseBtn" onclick="togglePlayPause()">
+							<i data-lucide="play"></i>
+						</button>
+						<span class="text-sm audio-time text-(--text-secondary) shrink-0" id="currentTime">0:00</span>
+						<div class="flex items-center grow" id="progressContainer">
+							<div class="w-full audio-progress-bar" id="progressBar">
+								<div class="audio-progress-fill" id="progressFill"></div>
+							</div>
+						</div>
+						<span class="text-sm audio-time text-(--text-secondary) shrink-0" id="totalTime">0:00</span>
+					</div>
+					<div id="audio-noSongError" class="justify-center text-(--text-secondary) text-[1.25rem] hidden" data-i18n="songs.open_song"></div>
+					<div id="audio-noAudioError" class="justify-center text-(--text-secondary) text-[1.25rem] hidden" data-i18n="songs.audio_missing"></div>
+				</div>
+			</div>
+
+			<div class="view flex flex-col pb-0! pt-0!" id="mainContainer-tab-songInfo">
+				<div class="view-header accordion-header">
+					<span class="view-title" data-i18n="panels.info_title"></span>
+					<div class="view-header-controls hidden!">
+						<button class="btn small" data-action="song-edit" data-i18n-title="songs.edit" onclick="editSong()"><i data-lucide="pencil"></i></button>
+						<button class="btn small danger hidden" data-action="song-delete" data-i18n-title="songs.delete" onclick="deleteSong()"><i data-lucide="trash-2"></i></button>
+					</div>
+				</div>
+				<div class="accordion-content pl-2" data-view="songInfo">
+					<div class="flex flex-col gap-2" id="songInfo-mainView">
+						<div class="flex items-baseline justify-between">
+							<div class="font-bold text-fg" id="songTitle"></div>
+							<div class="text-xs font-semibold text-(--text-secondary)" id="songId"></div>
+						</div>
+					</div>
+					<div id="songInfo-noSong" class="justify-center text-(--text-secondary) text-[1.25rem] hidden" data-i18n="songs.open_song"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	
+	<div id="output" class="flex-col hidden grow min-h-0 overflow-hidden spa-section">
+		<div id="content-area" class="grow w-full overflow-hidden">
+			<div id="display" data-i18n-empty="panels.output_waiting"></div>
+		</div>
+	</div>
+
+	<div id="settingsModal" class="modal" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h1 class="text-xl modal-title" data-i18n="settings.title"></h1>
+					<button type="button" class="btn-close" data-modal-dismiss data-i18n-aria-label="common.close"><i data-lucide="x"></i></button>
+				</div>
+				<div id="settingsSidebar">
+					<div class="modal-tabs flex-col!" id="settingsTabs">
+						<button type="button" class="modal-tab view-selector-tab active border-0!" data-tab="general" onclick="switchModalTab('settings', 'general', this)">
+							<i data-lucide="settings-2"></i>
+							<p data-i18n="settings.navigation.general"></p>
+						</button>
+						<button type="button" class="modal-tab view-selector-tab" data-tab="appearance" onclick="switchModalTab('settings', 'appearance', this)">
+							<i data-lucide="palette"></i>
+							<p data-i18n="settings.navigation.appearance"></p>
+						</button>
+						<div class="settings-tabs-divider" role="separator" aria-orientation="horizontal"></div>
+						<button type="button" class="modal-tab view-selector-tab" data-tab="library" onclick="switchModalTab('settings', 'library', this); initializeTransferSettings()">
+							<i data-lucide="library"></i>
+							<p data-i18n="settings.navigation.library"></p>
+						</button>
+						<button type="button" class="modal-tab view-selector-tab" data-tab="account" onclick="switchModalTab('settings', 'account', this)">
+							<i data-lucide="user-round"></i>
+							<p data-i18n="settings.navigation.account"></p>
+						</button>
+						<button type="button" class="modal-tab view-selector-tab" data-tab="display-settings" onclick="switchModalTab('settings', 'display-settings', this)">
+							<i data-lucide="monitor-play"></i>
+							<p data-i18n="settings.navigation.display"></p>
+						</button>
+						<div class="settings-tabs-divider" role="separator" aria-orientation="horizontal"></div>
+						<button type="button" class="modal-tab view-selector-tab" data-tab="about" data-settings-submenu="aboutSettings" onclick="switchModalTab('settings', 'about', this)">
+							<i data-lucide="info"></i>
+							<p data-i18n="settings.navigation.about"></p>
+						</button>
+						<button type="button" class="modal-tab view-selector-tab" data-tab="admin" data-settings-submenu="adminSettings" onclick="switchModalTab('settings', 'admin', this)">
+							<i data-lucide="shield-user"></i>
+							<p data-i18n="settings.navigation.admin"></p>
+						</button>
+					</div>
+					<div class="modal-body" id="settingsBody">
+						<div id="settings-tab-general" class="flex flex-col gap-2">
+							<div class="list-group">
+								<div class="list-item">
+									<div class="list-item__text">
+										<span class="list-item__title" data-i18n="settings.general.language"></span>
+									</div>
+									<select id="languageSelect" data-setting="language">
+										<option value="pl" data-i18n="common.language_polish"></option>
+										<option value="en" data-i18n="common.language_english"></option>
+									</select>
+								</div>
+							</div>
+							<div class="list-group">
+								<div class="list-item">
+									<div class="list-item__text">
+										<span class="list-item__title" data-i18n="settings.general.startup_behavior"></span>
+									</div>
+									<select id="startupBehaviorSelect" data-setting="startupBehavior">
+										<option value="startScreen" data-i18n="settings.general.startup_behavior_start_screen"></option>
+										<option value="mainInterface" data-i18n="settings.general.startup_behavior_main_interface"></option>
+									</select>
+								</div>
+							</div>
+						</div>
+						<div id="settings-tab-appearance" class="flex flex-col gap-2">
+							<div class="list-group">
+								<div class="list-item">
+									<div class="list-item__text">
+										<span class="list-item__title" data-i18n="settings.appearance.blur_label"></span>
+										<span class="list-item__desc" data-i18n="settings.appearance.blur_description"></span>
+									</div>
+									<div class="toggle" role="switch" id="blurToggle" data-setting="blurEnabled" aria-checked="true" tabindex="0">
+										<div class="toggle-thumb"></div>
+									</div>
+								</div>
+								<div class="list-item" id="blurIntensitySetting" data-setting-enabled-by="blurEnabled">
+									<div class="list-item__text">
+										<span class="list-item__title" data-i18n="settings.appearance.blur_intensity_label"></span>
+										<span class="list-item__desc" data-i18n="settings.appearance.blur_intensity_description"></span>
+									</div>
+									<div class="flex flex-col items-center gap-3">
+										<div class="slider-with-default">
+											<input type="range" id="blurIntensitySlider" data-setting="blurIntensity" data-setting-type="number" data-setting-output="blurIntensityValue" data-setting-format="blur" min="4" max="16" value="8" step="4">
+											<span class="slider-default-marker" style="--default-position: 35%" aria-hidden="true"></span>
+										</div>
+										<span class="list-item__desc" id="blurIntensityValue">--</span>
+									</div>
+								</div>
+							</div>
+							<div class="list-group">
+								<div class="list-item">
+									<div class="list-item__text">
+										<span class="list-item__title" data-i18n="settings.appearance.reduce_animations_label"></span>
+										<span class="list-item__desc" data-i18n="settings.appearance.reduce_animations_description"></span>
+									</div>
+									<div class="toggle off" role="switch" id="animationsToggle" data-setting="reduceAnimations" aria-checked="false" tabindex="0">
+										<div class="toggle-thumb"></div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div id="settings-tab-library" class="flex flex-col" data-settings-submenu-menu>
+							<div id="librarySettingsMenu" data-settings-submenu-menu class="flex flex-col gap-2">
+								<div class="list-group">
+									<span class="list-group__title" data-i18n="settings.library.default_visibility"></span>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.library.default_song_visibility"></span>
+											<span class="list-item__desc" data-i18n="settings.library.default_song_visibility_description"></span>
+										</div>
+										<div class="toggle off" role="switch" id="defaultSongVisiblePublicToggle" data-setting="defaults.songVisiblePublic" aria-checked="false" tabindex="0">
+											<div class="toggle-thumb"></div>
+										</div>
+									</div>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.library.default_setlist_visibility"></span>
+											<span class="list-item__desc" data-i18n="settings.library.default_setlist_visibility_description"></span>
+										</div>
+										<div class="toggle off" role="switch" id="defaultSetlistVisiblePublicToggle" data-setting="defaults.setlistVisiblePublic" aria-checked="false" tabindex="0">
+											<div class="toggle-thumb"></div>
+										</div>
+									</div>
+								</div>
+								<div class="list-group">
+									<div class="list-item flex-col items-start!">
+										<div class="flex flex-col">
+											<span class="list-item__title" data-i18n="transfer.title"></span>
+											<span class="list-item__desc" data-i18n="transfer.settings_description"></span>
+										</div>
+										<div class="flex flex-row gap-3 w-full justify-center!">
+											<button type="button" class="btn primary large" onclick="toggleSettingsSubmenu('librarySettings', 'export'); setButtonLoading(document.getElementById('transferExportBtn'), false); _updateTransferExportButton();" data-i18n="transfer.export_tab"></button>
+											<button type="button" class="btn secondary large" id="libraryImportTransferBtn" onclick="toggleSettingsSubmenu('librarySettings', 'import'); setButtonLoading(document.getElementById('transferPreviewBtn'), false);" data-i18n="transfer.import_tab"></button>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div id="transfer-tab-export" class="flex-col gap-3 hidden" data-settings-submenu-view="export">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('librarySettings')"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+								<p class="text-center text-xl" data-i18n="transfer.export_tab"></p>
+								<div class="list-group min-w-0 w-full">
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="transfer.format"></span>
+											<span class="list-item__desc" id="transferExportHint"></span>
+											<span class="list-item__desc text-blue-500 underline cursor-pointer" data-i18n="transfer.learn_more_hint" onclick="toggleSettingsSubmenu('librarySettings', 'formats');"></span>
+										</div>
+										<select id="transferExportFormat" onchange="updateTransferExportOptions()">
+											<option value="barymusic">BaryMusic</option>
+											<option value="openlyrics">OpenLyrics</option>
+											<option value="chordpro">ChordPro</option>
+										</select>
+									</div>
+									<div class="list-item" id="transferExportScopeRow">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="transfer.scope"></span>
+										</div>
+										<select id="transferExportScope" onchange="updateTransferExportOptions()">
+											<option value="songs" data-i18n="transfer.scope_songs"></option>
+											<option value="setlists" data-i18n="transfer.scope_setlists"></option>
+										</select>
+									</div>
+								</div>
+								<div id="transferSongSelection" class="view transfer-list-selection hidden">
+									<div class="view-header pl-0!">
+										<span id="transferSongSelectionCount" class="view-title pl-0!"></span>
+										<div class="view-header-controls">
+											<button type="button" class="btn small" data-action="select-visible-transfer-songs" onclick="selectVisibleTransferSongs()" data-i18n-title="transfer.select_visible"><i data-lucide="list-checks"></i></button>
+											<button type="button" class="btn small" data-action="clear-transfer-songs" onclick="clearTransferSongSelection()" data-i18n-title="transfer.clear_selection"><i data-lucide="list-x"></i></button>
+											<button type="button" class="btn small" data-action="filter-transfer-songs" onclick="openTransferSongFilter(event, this)" data-i18n-title="songs.filter_categories" aria-expanded="false"><i data-lucide="filter"></i></button>
+											<button type="button" class="btn small" data-action="search-transfer-songs" onclick="toggleSearchField('#transferSongSearchField', this)" data-i18n-title="songs.search_title" aria-expanded="false"><i data-lucide="search"></i></button>
+										</div>
+									</div>
+									<div class="view-body">
+										<div class="shrink-0 search-field--collapsed" id="transferSongSearchField">
+											<input type="search" data-transfer-song-search data-i18n="common.search" class="w-full" oninput="renderTransferSongSelection()">
+										</div>
+										<div class="view-content gap-1" data-transfer-songlist-view></div>
+									</div>
+								</div>
+								<div id="transferSetlistSelection" class="view transfer-list-selection hidden">
+									<div class="view-header pl-0!">
+										<span id="transferSetlistSelectionCount" class="view-title pl-0!"></span>
+										<div class="view-header-controls">
+											<button type="button" class="btn small" data-action="select-visible-transfer-setlists" onclick="selectVisibleTransferSetlists()" data-i18n-title="transfer.select_visible_setlists"><i data-lucide="list-checks"></i></button>
+											<button type="button" class="btn small" data-action="clear-transfer-setlists" onclick="clearTransferSetlistSelection()" data-i18n-title="transfer.clear_selection"><i data-lucide="list-x"></i></button>
+											<button type="button" class="btn small" data-action="filter-transfer-setlists" onclick="openTransferSetlistFilter(event, this)" data-i18n-title="setlists.filter_title" aria-expanded="false"><i data-lucide="filter"></i></button>
+											<button type="button" class="btn small" data-action="search-transfer-setlists" onclick="toggleSearchField('#transferSetlistSearchField', this)" data-i18n-title="setlists.search_title" aria-expanded="false"><i data-lucide="search"></i></button>
+										</div>
+									</div>
+									<div class="view-body">
+										<div class="shrink-0 search-field--collapsed" id="transferSetlistSearchField">
+											<input type="search" data-transfer-setlist-search data-i18n="common.search" class="w-full" oninput="renderTransferSetlistSelection()">
+										</div>
+										<div class="view-content" data-transfer-setlists-view></div>
+									</div>
+								</div>
+								<div class="flex flex-row justify-center">
+									<button type="submit" id="transferExportBtn" class="btn primary" onclick="exportLibrarySelection()">
+										<span data-i18n="transfer.export_action" data-button-loading-label></span>
+										<i data-lucide="loader-circle"></i>
+									</button>
+								</div>
+							</div>
+							<div id="transfer-tab-import" class="flex-col gap-3 hidden" data-settings-submenu-view="import">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('librarySettings')"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+								<p class="text-center text-xl" data-i18n="transfer.import_tab"></p>
+								<div class="list-group min-w-0 w-full">
+									<div class="list-item flex-col items-start! gap-2!">
+										<span class="list-item__title" data-i18n="transfer.choose_files"></span>
+										<input id="transferImportFiles" class="hidden" type="file" multiple accept=".barymusic,.zip,.xml,.cho,.crd,.chopro,.pro">
+										<button type="button" class="btn secondary" onclick="document.getElementById('transferImportFiles').click()"><i data-lucide="plus"></i><span data-i18n="transfer.add_files"></span></button>
+										<span class="list-item__desc" data-i18n="transfer.import_help"></span>
+									</div>
+									<div id="transferSelectedFiles" class="hidden"></div>
+								</div>
+								<div id="transferImportPreview" class="hidden flex-col gap-2"></div>
+								<div class="flex justify-center gap-2">
+									<button type="button" id="transferPreviewBtn" class="btn primary" onclick="previewLibraryImport()"><span data-i18n="transfer.preview_action" data-button-loading-label></span><i data-lucide="loader-circle"></i></button>
+									<button type="button" id="transferCommitBtn" class="btn success hidden" onclick="commitLibraryImport()"><span data-i18n="transfer.import_action" data-button-loading-label></span><i data-lucide="loader-circle"></i></button>
+								</div>
+							</div>
+							<div id="transfer-tab-formats" class="flex-col hidden" data-settings-submenu-view="formats">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('librarySettings', 'export');"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+								<p class="text-center text-xl pt-3" data-i18n="transfer.formats_comparison"></p>
+								<p class="text-center text-sm text-(--text-secondary) pb-3" data-i18n="transfer.comparison_note"></p>
+								<div class="list-group">
+									<table class="format-comparison text-[0.8rem]">
+										<thead>
+											<tr>
+												<th scope="col" data-i18n="transfer.comparison_data"></th>
+												<th scope="col">BaryMusic</th>
+												<th scope="col">OpenLyrics</th>
+												<th scope="col">ChordPro</th>
+											</tr>
+										</thead>
+										<tbody>
+											<tr><th scope="row" data-i18n="transfer.comparison_song_metadata"></th>
+												<td data-state="yes"><span data-i18n="transfer.comparison_yes"></span></td>
+												<td data-state="yes"><span data-i18n="transfer.comparison_yes"></span></td>
+												<td data-state="yes"><span data-i18n="transfer.comparison_yes"></span></td>
+											</tr>
+											<tr><th scope="row" data-i18n="transfer.comparison_app_metadata"></th>
+												<td data-state="yes"><span data-i18n="transfer.comparison_yes"></span></td>
+												<td data-state="no"><span class="format-support" tabindex="0" data-i18n="transfer.comparison_no" data-i18n-tooltip="transfer.comparison_app_metadata_tip"></span></td>
+												<td data-state="no"><span class="format-support" tabindex="0" data-i18n="transfer.comparison_no" data-i18n-tooltip="transfer.comparison_app_metadata_tip"></span></td>
+											</tr>
+											<tr><th scope="row" data-i18n="transfer.comparison_song_lyrics"></th>
+												<td data-state="yes"><span data-i18n="transfer.comparison_yes"></span></td>
+												<td data-state="yes"><span class="format-support" data-i18n="transfer.comparison_yes_asterisk" data-i18n-tooltip="transfer.comparison_song_lyrics_tip"></span></td>
+												<td data-state="yes"><span  class="format-support" data-i18n="transfer.comparison_yes_asterisk" data-i18n-tooltip="transfer.comparison_song_lyrics_tip"></span></td>
+											</tr>
+											<tr><th scope="row" data-i18n="transfer.comparison_sheet_file"></th>
+												<td data-state="yes"><span data-i18n="transfer.comparison_yes"></span></td>
+												<td data-state="no"><span class="format-support" tabindex="0" data-i18n="transfer.comparison_no" data-i18n-tooltip="transfer.comparison_not_supported_tip"></span></td>
+												<td data-state="yes"><span class="format-support" tabindex="0" data-i18n="transfer.comparison_yes_asterisk" data-i18n-tooltip="transfer.comparison_sheet_file_tip_chordpro"></span></td>
+											</tr>
+											<tr><th scope="row" data-i18n="transfer.comparison_sheet_anchors"></th>
+												<td data-state="yes"><span data-i18n="transfer.comparison_yes"></span></td>
+												<td data-state="no"><span class="format-support" tabindex="0" data-i18n="transfer.comparison_no" data-i18n-tooltip="transfer.comparison_not_supported_tip"></span></td>
+												<td data-state="no"><span class="format-support" tabindex="0" data-i18n="transfer.comparison_no" data-i18n-tooltip="transfer.comparison_not_supported_tip"></span></td>
+											</tr>
+											<tr><th scope="row" data-i18n="transfer.comparison_audio_file"></th>
+												<td data-state="yes"><span data-i18n="transfer.comparison_yes"></span></td>
+												<td data-state="no"><span class="format-support" tabindex="0" data-i18n="transfer.comparison_no" data-i18n-tooltip="transfer.comparison_not_supported_tip"></span></td>
+												<td data-state="no"><span class="format-support" tabindex="0" data-i18n="transfer.comparison_no" data-i18n-tooltip="transfer.comparison_not_supported_tip"></span></td>
+											</tr>
+											<tr><th scope="row" data-i18n="transfer.comparison_audio_timestamps"></th>
+												<td data-state="yes"><span data-i18n="transfer.comparison_yes"></span></td>
+												<td data-state="no"><span class="format-support" tabindex="0" data-i18n="transfer.comparison_no" data-i18n-tooltip="transfer.comparison_not_supported_tip"></span></td>
+												<td data-state="no"><span class="format-support" tabindex="0" data-i18n="transfer.comparison_no" data-i18n-tooltip="transfer.comparison_not_supported_tip"></span></td>
+											</tr>
+											<tr><th scope="row" data-i18n="transfer.comparison_setlists"></th>
+												<td data-state="yes"><span data-i18n="transfer.comparison_yes"></span></td>
+												<td data-state="no"><span class="format-support" tabindex="0" data-i18n="transfer.comparison_no" data-i18n-tooltip="transfer.comparison_not_supported_tip"></span></td>
+												<td data-state="no"><span class="format-support" tabindex="0" data-i18n="transfer.comparison_no" data-i18n-tooltip="transfer.comparison_not_supported_tip"></span></td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							</div>
+						</div>			
+						<div id="settings-tab-display-settings" class="flex flex-col gap-2">
+							<p id="channelDisplaySettingsDescription" class="text-sm text-(--text-secondary) w-125 text-center"></p>
+							<div id="displayPreviewFrame" class="display-preview-frame mb-2">
+								<button type="button" class="display-preview-resize-handle display-preview-resize-handle--left" data-preview-resize="left" data-i18n-aria-label="settings.display.resize_label"></button>
+								<div id="displayPreview" class="p-4 rounded-lg border border-blue-500/20 h-50" style="font-size:0.9rem;"></div>
+								<button type="button" class="display-preview-resize-handle display-preview-resize-handle--right" data-preview-resize="right" data-i18n-aria-label="settings.display.resize_label"></button>
+							</div>
+							<div id="displaySettingsMenu" data-settings-submenu-menu>
+								<div class="list-group">
+									<div class="list-item" onclick="toggleSettingsSubmenu('displaySettings', 'display-text')">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.text"></span>
+										</div>
+										<i data-lucide="chevron-right" class="settings-submenu-chevron"></i>
+									</div>
+									<div class="list-item" onclick="toggleSettingsSubmenu('displaySettings', 'display-colors')">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.colors"></span>
+										</div>
+										<i data-lucide="chevron-right" class="settings-submenu-chevron"></i>
+									</div>
+									<div class="list-item" onclick="toggleSettingsSubmenu('displaySettings', 'display-layout')">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.layout"></span>
+										</div>
+										<i data-lucide="chevron-right" class="settings-submenu-chevron"></i>
+									</div>
+								</div>
+							</div>
+							<div class="hidden flex-col gap-3" data-settings-submenu-view="display-text">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('displaySettings')"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+								<div class="list-group">
+									<span class="list-group__title" data-i18n="settings.display.font"></span>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.font_family"></span>
+										</div>
+										<select id="channelFontFamilySelect" data-setting="display.fontFamily" data-setting-mode="draft">
+											<option value="Noto Sans" style="font-family:Noto Sans;" data-i18n="settings.display.font_noto_sans"></option>
+											<option value="Google Sans Code" style="font-family:Google Sans Code;" data-i18n="settings.display.font_google_sans_code"></option>
+										</select>
+									</div>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.font_size"></span>
+											<span class="list-item__desc" data-i18n="settings.display.font_size_auto_label"></span>
+										</div>
+										<select>
+											<option data-i18n="settings.display.font_size_auto"></option>
+										</select>
+									</div>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.font_weight"></span>
+										</div>
+										<select id="channelFontWeightSelect" data-setting="display.fontWeight" data-setting-mode="draft">
+											<option value="400" class="font-normal" data-i18n="settings.display.weight_normal"></option>
+											<option value="500" class="font-medium" data-i18n="settings.display.weight_medium"></option>
+											<option value="700" class="font-bold" data-i18n="settings.display.weight_bold"></option>
+										</select>
+									</div>
+								</div>
+								<div class="list-group">
+									<span class="list-group__title" data-i18n="settings.display.readibility"></span>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.line_height"></span>
+										</div>
+										<div class="flex flex-col items-center gap-3">
+											<div class="slider-with-default">
+												<input type="range" id="channelLineHeightSlider" data-setting="display.lineHeight" data-setting-type="number" data-setting-mode="draft" data-setting-output="channelLineHeightValue" min="1" max="2" value="1.6" step="0.1">
+												<span class="slider-default-marker" style="--default-position: 59%" aria-hidden="true"></span>
+											</div>
+											<span class="list-item__desc mt-1.5" id="channelLineHeightValue">1.6</span>
+										</div>
+									</div>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.letter_spacing"></span>
+										</div>
+										<div class="flex flex-col items-center gap-3">
+											<div class="slider-with-default">
+												<input type="range" id="channelLetterSpacingSlider" data-setting="display.letterSpacing" data-setting-type="number" data-setting-mode="draft" data-setting-output="channelLetterSpacingValue" min="-2" max="2" value="0" step="0.1">
+												<span class="slider-default-marker" style="--default-position: 50%" aria-hidden="true"></span>
+											</div>
+											<span class="list-item__desc mt-1.5" id="channelLetterSpacingValue">0</span>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="hidden flex-col gap-3" data-settings-submenu-view="display-colors">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('displaySettings')"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+								<div class="list-group">
+									<span class="list-group__title" data-i18n="settings.display.text"></span>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.text_color"></span>
+										</div>
+										<select id="textColorSelect" data-setting="display.color" data-setting-mode="draft">
+											<option value='#141414' data-i18n="settings.display.color_black"></option>
+											<option value='#ffffff' data-i18n="settings.display.color_white"></option>
+										</select>
+									</div>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.text_shadow"></span>
+										</div>
+										<select id="textShadowSelect" data-setting="display.textShadow" data-setting-mode="draft">
+											<option value='none' data-i18n="settings.display.text_shadow_off"></option>
+											<option value='0 1px 2px rgba(0,0,0,.45)' data-i18n="settings.display.text_shadow_subtle"></option>
+											<option value='0 2px 6px rgba(0,0,0,.7)' data-i18n="settings.display.text_shadow_strong"></option>
+										</select>
+									</div>
+								</div>
+								<div class="list-group">
+									<span class="list-group__title" data-i18n="settings.display.background"></span>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.background_color"></span>
+										</div>
+										<select id="backgroundColorSelect" data-setting="display.background" data-setting-mode="draft">
+											<option value='#141414' data-i18n="settings.display.color_black"></option>
+											<option value='#ffffff' data-i18n="settings.display.color_white"></option>
+										</select>
+									</div>
+								</div>
+							</div>
+							<div class="hidden flex-col gap-3" data-settings-submenu-view="display-layout">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('displaySettings')"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+								<div class="list-group">
+									<span class="list-group__title" data-i18n="settings.display.text"></span>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.horizontal_align"></span>
+										</div>
+										<select id="channelTextAlignSelect" data-setting="display.textAlign" data-setting-mode="draft">
+											<option value="left" data-i18n="settings.display.align_left"></option>
+											<option value="center" data-i18n="settings.display.align_center"></option>
+											<option value="right" data-i18n="settings.display.align_right"></option>
+										</select>
+									</div>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.vertical_align"></span>
+										</div>
+										<select id="channelJustifyContentSelect" data-setting="display.justifyContent" data-setting-mode="draft">
+											<option value="start" data-i18n="settings.display.align_top"></option>
+											<option value="center" data-i18n="settings.display.align_center"></option>
+											<option value="end" data-i18n="settings.display.align_bottom"></option>
+										</select>
+									</div>
+								</div>
+								<div class="list-group">
+									<span class="list-group__title" data-i18n="settings.display.padding"></span>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.left_padding"></span>
+										</div>
+										<div class="flex flex-col items-center gap-3">
+											<div class="slider-with-default">
+												<input type="range" id="channelLeftPaddingSlider" data-setting="display.leftPadding" data-setting-type="number" data-setting-mode="draft" data-setting-output="channelLeftPaddingValue" data-setting-format="percent" min="0" max="25" value="3" step="1">
+												<span class="slider-default-marker" style="--default-position: 17%" aria-hidden="true"></span>
+											</div>
+											<span class="list-item__desc mt-1.5" id="channelLeftPaddingValue">3</span>
+										</div>
+									</div>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.right_padding"></span>
+										</div>
+										<div class="flex flex-col items-center gap-3">
+											<div class="slider-with-default">
+												<input type="range" id="channelRightPaddingSlider" data-setting="display.rightPadding" data-setting-type="number" data-setting-mode="draft" data-setting-output="channelRightPaddingValue" data-setting-format="percent" min="0" max="25" value="3" step="1">
+												<span class="slider-default-marker" style="--default-position: 17%" aria-hidden="true"></span>
+											</div>
+											<span class="list-item__desc mt-1.5" id="channelRightPaddingValue">3</span>
+										</div>
+									</div>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.top_padding"></span>
+										</div>
+										<div class="flex flex-col items-center gap-3">
+											<div class="slider-with-default">
+												<input type="range" id="channelTopPaddingSlider" data-setting="display.topPadding" data-setting-type="number" data-setting-mode="draft" data-setting-output="channelTopPaddingValue" data-setting-format="percent" min="0" max="25" value="3" step="1">
+												<span class="slider-default-marker" style="--default-position: 17%" aria-hidden="true"></span>
+											</div>
+											<span class="list-item__desc mt-1.5" id="channelTopPaddingValue">3</span>
+										</div>
+									</div>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.display.bottom_padding"></span>
+										</div>
+										<div class="flex flex-col items-center gap-3">
+											<div class="slider-with-default">
+												<input type="range" id="channelBottomPaddingSlider" data-setting="display.bottomPadding" data-setting-type="number" data-setting-mode="draft" data-setting-output="channelBottomPaddingValue" data-setting-format="percent" min="0" max="25" value="3" step="1">
+												<span class="slider-default-marker" style="--default-position: 17%" aria-hidden="true"></span>
+											</div>
+											<span class="list-item__desc mt-1.5" id="channelBottomPaddingValue">3</span>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div id="settings-tab-account" class="flex flex-col gap-2">
+							<div class="relative">
+								<div class="list-group">
+									<span class="list-group__title" data-i18n="settings.navigation.account"></span>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.account.status"></span>
+										</div>
+										<div>
+											<span id="accountStatus"></span>
+										</div>
+									</div>
+									<div class="list-item" id="accountUsernameItem">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.account.username_label"></span>
+										</div>
+										<div>
+											<p id="accountUsername"></p>
+										</div>
+									</div>
+									<div class="list-item flex-col">
+										<button type="submit" id="logoutBtn" class="btn danger hidden" onclick="logout();">
+											<p data-i18n="auth.logout" data-button-loading-label></p>
+											<i data-lucide="loader-circle"></i>
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div id="settings-tab-about" class="hidden">
+							<div id="aboutSettingsMenu" data-settings-submenu-menu>
+								<div class="list-group">
+									<div id="aboutBrandEasterEgg" class="list-item flex-col gap-0! about-brand-easter-egg" title="">
+										<div class="p-2.25 setup-branding-bg">
+											<img src="img/barymusic.svg" class="w-8 h-8">
+										</div>
+										<span class="text-2xl text-(--text-secondary)"><span data-i18n="common.brand_name"></span>
+											<span id="barymusic-version" class="text-(--text-primary)" data-i18n="settings.messages.version_error"></span>
+										</span>
+									</div>
+									<div class="list-item" onclick="toggleSettingsSubmenu('aboutSettings', 'license_barymusic')">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.about.license_title"></span>
+											<span class="list-item__desc" data-i18n="settings.about.license_description"></span>
+										</div>
+										<i data-lucide="chevron-right" class="settings-submenu-chevron"></i>
+									</div>
+									<div class="list-item" onclick="toggleSettingsSubmenu('aboutSettings', 'license_oss')">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.about.open_source_licenses_title"></span>
+											<span class="list-item__desc" data-i18n="settings.about.open_source_licenses_description"></span>
+										</div>
+										<i data-lucide="chevron-right" class="settings-submenu-chevron"></i>
+									</div>
+								</div>
+							</div>
+							<div class="hidden flex-col gap-3" data-settings-submenu-view="license_barymusic">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('aboutSettings')"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+								<div class="list-group w-140!">
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="common.brand_name"></span>
+											<span class="list-item__desc" data-i18n="settings.about.app_license"></span>
+										</div>
+										<a href="https://gnu.org/licenses/gpl-3.0#license-text" target="_blank" class="text-blue-300 text-xs ml-auto">https://gnu.org/licenses/gpl-3.0#license-text</a>
+									</div>
+									<div class="list-item">
+										<pre id="license_barymusic" class="text-[0.72rem] leading-relaxed text-(--text-secondary) whitespace-pre-wrap font-mono bg-black/30 rounded-lg px-3 py-2.5 overflow-x-auto select-text"></pre>
+									</div>
+								</div>
+							</div>
+							<div class="hidden flex-col gap-3" data-settings-submenu-view="license_oss">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('aboutSettings')"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+								<div class="list-group">
+									<div class="list-item" onclick="toggleSettingsSubmenu('aboutSettings', 'license_lucide')">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.about.lucide_name"></span>
+											<span class="list-item__desc" data-i18n="settings.about.lucide_license"></span>
+										</div>
+										<i data-lucide="chevron-right" class="settings-submenu-chevron"></i>
+									</div>
+									<div class="list-item" onclick="toggleSettingsSubmenu('aboutSettings', 'license_tailwind')">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.about.tailwind_name"></span>
+											<span class="list-item__desc" data-i18n="settings.about.tailwind_license"></span>
+										</div>
+										<i data-lucide="chevron-right" class="settings-submenu-chevron"></i>
+									</div>
+									<div class="list-item" onclick="toggleSettingsSubmenu('aboutSettings', 'license_i18next')">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.about.i18next_name"></span>
+											<span class="list-item__desc" data-i18n="settings.about.i18next_license"></span>
+										</div>
+										<i data-lucide="chevron-right" class="settings-submenu-chevron"></i>
+									</div>
+									<div class="list-item" onclick="toggleSettingsSubmenu('aboutSettings', 'license_notosans')">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.about.noto_sans_name"></span>
+											<span class="list-item__desc" data-i18n="settings.about.noto_sans_license"></span>
+										</div>
+										<i data-lucide="chevron-right" class="settings-submenu-chevron"></i>
+									</div>
+									<div class="list-item" onclick="toggleSettingsSubmenu('aboutSettings', 'license_sanscode')">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.about.google_sans_code_name"></span>
+											<span class="list-item__desc" data-i18n="settings.about.google_sans_code_license"></span>
+										</div>
+										<i data-lucide="chevron-right" class="settings-submenu-chevron"></i>
+									</div>
+								</div>
+							</div>
+							<div class="hidden flex-col gap-3" data-settings-submenu-view="license_lucide">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('aboutSettings', 'license_oss')"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+								<div class="list-group">
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.about.lucide_name"></span>
+											<span class="list-item__desc" data-i18n="settings.about.lucide_license"></span>
+										</div>
+										<a href="https://lucide.dev/license" target="_blank" class="text-blue-300 text-xs ml-auto">https://lucide.dev/license</a>
+									</div>
+									<div class="list-item">
+										<pre id="license_lucide" class="text-[0.72rem] leading-relaxed text-(--text-secondary) whitespace-pre-wrap font-mono bg-black/30 rounded-lg px-3 py-2.5 overflow-x-auto"></pre>
+									</div>
+								</div>
+							</div>
+							<div class="hidden flex-col gap-3" data-settings-submenu-view="license_tailwind">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('aboutSettings', 'license_oss')"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+								<div class="list-group">
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.about.tailwind_name"></span>
+											<span class="list-item__desc" data-i18n="settings.about.tailwind_license"></span>
+										</div>
+										<a href="https://github.com/tailwindlabs/tailwindcss/blob/main/LICENSE" target="_blank" class="text-blue-300 text-xs ml-auto">https://github.com/tailwindlabs/tailwindcss/blob/main/LICENSE</a>
+									</div>
+									<div class="list-item">
+										<pre id="license_tailwind" class="text-[0.72rem] leading-relaxed text-(--text-secondary) whitespace-pre-wrap font-mono bg-black/30 rounded-lg px-3 py-2.5 overflow-x-auto"></pre>
+									</div>
+								</div>
+							</div>
+							<div class="hidden flex-col gap-3" data-settings-submenu-view="license_i18next">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('aboutSettings', 'license_oss')"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+								<div class="list-group">
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.about.i18next_name"></span>
+											<span class="list-item__desc" data-i18n="settings.about.i18next_license"></span>
+										</div>
+										<a href="https://github.com/i18next/i18next/blob/master/LICENSE" target="_blank" class="text-blue-300 text-xs ml-auto">https://github.com/i18next/i18next/blob/master/LICENSE</a>
+									</div>
+									<div class="list-item">
+										<pre id="license_i18next" class="text-[0.72rem] leading-relaxed text-(--text-secondary) whitespace-pre-wrap font-mono bg-black/30 rounded-lg px-3 py-2.5 overflow-x-auto"></pre>
+									</div>
+								</div>
+							</div>
+							<div class="hidden flex-col gap-3" data-settings-submenu-view="license_notosans">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('aboutSettings', 'license_oss')"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+								<div class="list-group">
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.about.noto_sans_name"></span>
+											<span class="list-item__desc" data-i18n="settings.about.noto_sans_license"></span>
+										</div>
+										<a href="https://github.com/notofonts/latin-greek-cyrillic/blob/main/OFL.txt" target="_blank" class="text-blue-300 text-xs ml-auto">https://github.com/notofonts/latin-greek-cyrillic/blob/main/OFL.txt</a>
+									</div>
+									<div class="list-item">
+										<pre id="license_noto_sans" class="text-[0.72rem] leading-relaxed text-(--text-secondary) whitespace-pre-wrap font-mono bg-black/30 rounded-lg px-3 py-2.5 overflow-x-auto"></pre>
+									</div>
+								</div>
+							</div>
+							<div class="hidden flex-col gap-3" data-settings-submenu-view="license_sanscode">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('aboutSettings', 'license_oss')"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+								<div class="list-group">
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.about.google_sans_code_name"></span>
+											<span class="list-item__desc" data-i18n="settings.about.google_sans_code_license"></span>
+										</div>
+										<a href="https://github.com/googlefonts/googlesans-code/blob/main/OFL.txt" target="_blank" class="text-blue-300 text-xs ml-auto">https://github.com/googlefonts/googlesans-code/blob/main/OFL.txt</a>
+									</div>
+									<div class="list-item">
+										<pre id="license_sans_code" class="text-[0.72rem] leading-relaxed text-(--text-secondary) whitespace-pre-wrap font-mono bg-black/30 rounded-lg px-3 py-2.5 overflow-x-auto"></pre>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div id="settings-tab-admin" class="hidden">
+							<div id="adminSettingsMenu" data-settings-submenu-menu>
+								<div class="list-group">
+									<div type="button" class="list-item" onclick="toggleSettingsSubmenu('adminSettings', 'status')">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.admin.server_status_title"></span>
+											<span class="list-item__desc" data-i18n="settings.admin.server_status_description"></span>
+										</div>
+										<i data-lucide="chevron-right" class="settings-submenu-chevron"></i>
+									</div>
+									<div type="button" class="list-item" onclick="toggleSettingsSubmenu('adminSettings', 'config')">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.admin.server_config_title"></span>
+											<span class="list-item__desc" data-i18n="settings.admin.server_config_description"></span>
+										</div>
+										<i data-lucide="chevron-right" class="settings-submenu-chevron"></i>
+									</div>
+									<div type="button" class="list-item" onclick="toggleSettingsSubmenu('adminSettings', 'backup');">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.admin.backup_title"></span>
+											<span class="list-item__desc" data-i18n="settings.admin.backup_description"></span>
+										</div>
+										<i data-lucide="chevron-right" class="settings-submenu-chevron"></i>
+									</div>
+								</div>
+							</div>
+
+							<div id="adminSettingsStatus" class="hidden flex-col gap-3" data-settings-submenu-view="status">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('adminSettings')"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+								<div class="list-group">
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.admin.health_title"></span>
+											<span class="list-item__desc" id="adminHealthUpdated" data-i18n="settings.admin.status_loading"></span>
+										</div>
+										<button type="button" class="btn secondary" data-admin-refresh data-i18n-title="settings.admin.refresh">
+											<i data-lucide="refresh-cw"></i>
+										</button>
+									</div>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.admin.http_title"></span>
+										</div>
+										<span class="list-item__desc" id="adminHealthHttp">--</span>
+									</div>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.admin.database_title"></span>
+										</div>
+										<span class="list-item__desc" id="adminHealthDatabase">--</span>
+									</div>
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.admin.websocket_title"></span>
+											<span class="list-item__desc" id="adminHealthWebsocketClients">--</span>
+										</div>
+										<span class="list-item__desc" id="adminHealthWebsocket">--</span>
+									</div>
+								</div>
+								<div class="list-group">
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.admin.files_title"></span>
+											<span class="list-item__desc" id="adminFilesSummary" data-i18n="settings.admin.status_loading"></span>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<form id="adminSettingsForm" class="hidden flex-col gap-3" data-settings-submenu-view="config">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('adminSettings')"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+
+								<div class="list-group">
+									<div class="list-item flex-col items-start! gap-1!">
+										<div class="flex items-center gap-2">
+											<span class="list-item__title" data-i18n="settings.admin.admins_title"></span>
+										</div>
+										<span class="list-item__desc" data-i18n="settings.admin.admins_description"></span>
+										<div class="tag-editor" id="adminsTagEditor" onclick="tagEditorFocus(this)">
+											<input type="text" id="adminSettingsType" class="tag-editor-input" data-i18n-placeholder="settings.admin.admins_placeholder" autocomplete="off" onkeydown="tagEditorKeydown(event, 'adminsTagEditor')" oninput="tagEditorInput(event, 'adminsTagEditor')">
+										</div>
+									</div>
+								</div>
+
+								<div class="list-group">
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.admin.anyone_can_add_title"></span>
+											<span class="list-item__desc" data-i18n="settings.admin.anyone_can_add_description"></span>
+										</div>
+										<div class="toggle off" role="switch" id="adminSettingsAllowAllAdd" data-admin-setting="allowAllUsersToAddSongs" data-admin-disables="adminSettingsCanAddListGroup" aria-checked="false" tabindex="0">
+											<div class="toggle-thumb"></div>
+										</div>
+									</div>
+
+									<div class="list-item flex-col items-start! gap-1! transition-all duration-200" id="adminSettingsCanAddListGroup">
+										<div class="flex items-center gap-2">
+											<span class="list-item__title" data-i18n="settings.admin.can_add_title"></span>
+										</div>
+										<span class="list-item__desc" data-i18n="settings.admin.can_add_description"></span>
+										<div class="tag-editor" id="canAddSongsTagEditor" onclick="tagEditorFocus(this)">
+											<input type="text" id="adminSettingsCanAddSongsType" class="tag-editor-input" data-i18n-placeholder="settings.admin.can_add_placeholder" autocomplete="off" onkeydown="tagEditorKeydown(event, 'canAddSongsTagEditor')" oninput="tagEditorInput(event, 'canAddSongsTagEditor')">
+										</div>
+									</div>
+								</div>
+
+								<div class="list-group">
+									<div class="list-item">
+										<div class="list-item__text">
+											<span class="list-item__title" data-i18n="settings.admin.registration_title"></span>
+											<span class="list-item__desc" data-i18n="settings.admin.registration_description"></span>
+										</div>
+										<div class="toggle off" role="switch" id="adminSettingsAllowReg" data-admin-setting="allowRegistration" aria-checked="false" tabindex="0">
+											<div class="toggle-thumb"></div>
+										</div>
+									</div>
+								</div>
+							</form>
+							<div id="adminSettingsBackup" class="hidden flex-col gap-3" data-settings-submenu-view="backup">
+								<button type="button" class="settings-submenu-back" onclick="toggleSettingsSubmenu('adminSettings')"><i data-lucide="arrow-left"></i><span data-i18n="common.back"></span></button>
+								<div class="list-group"><div class="list-item">
+									<div class="list-item__text"><span class="list-item__title" data-i18n="settings.admin.full_backup_title"></span><span class="list-item__desc" data-i18n="settings.admin.full_backup_description"></span></div>
+									<button type="button" id="adminBackupBtn" class="btn primary" onclick="exportAdminBackup()"><span data-i18n="settings.admin.download_backup" data-button-loading-label></span><i data-lucide="loader-circle" class="hidden"></i></button>
+								</div></div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<template id="tpl-ku-client-card">
+		<div class="flex flex-col items-center gap-1 p-2 px-2.5 rounded-[10px] bg-elevated/55 border border-rim min-w-17.5 max-w-25 [&_.icon_svg]:w-5 [&_.icon_svg]:h-5 [&_.icon_svg]:text-muted">
+			<i data-lucide="user-round" class="icon"></i>
+			<span class="text-[0.78rem] text-fg text-center wrap-break-word flex flex-col items-center gap-0.5"></span>
+		</div>
+	</template>
+
+	<div class="modal" id="setlistModal" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h1 id="setlistModalTitle" class="text-xl modal-title" data-i18n="setlists.create_title"></h1>
+					<button type="button" class="btn-close" onclick="closeAllModals()" data-i18n-aria-label="common.close" data-i18n-title="common.close"><i data-lucide="x"></i></button>
+				</div>
+				<div class="modal-tabs">
+					<button type="button" class="modal-tab active" data-tab="info" onclick="switchModalTab('setlist', 'info', this)" data-i18n="songs.tab_info"></button>
+					<button type="button" class="modal-tab" data-tab="items" onclick="switchModalTab('setlist', 'items', this);" data-i18n="setlists.tab_items"></button>
+				</div>
+				<div class="modal-body">
+					<form id="setlistForm" onsubmit="submitSetlistForm(event)" novalidate>
+						<input type="hidden" id="setlistEditId">
+						<div id="setlist-tab-info" class="list-group">
+							<div class="list-item">
+								<div class="list-item__text">
+									<label for="setlistTitle" class="list-item__title" data-i18n="setlists.name_label"></label>
+								</div>
+								<input type="text" id="setlistTitle" required maxlength="200" data-i18n="setlists.name_placeholder">
+							</div>
+							<div class="list-item">
+								<div class="list-item__text">
+									<label for="setlistDescription" class="list-item__title" data-i18n="setlists.description_label"></label>
+								</div>
+								<textarea id="setlistDescription" rows="2" data-i18n="setlists.description_placeholder"></textarea>
+							</div>
+							<div class="list-item">
+								<div class="list-item__text">
+									<span class="list-item__title" data-i18n="setlists.public_label"></span>
+									<label class="list-item__desc" data-i18n="setlists.public_description"></label>
+								</div>
+								<div class="toggle off" role="switch" id="setlistIsPublic" aria-checked="false" tabindex="0" onclick="toggleSetlistPublic('add', this)" onkeydown="if(event.key==='Enter'||event.key===' ')toggleSetlistPublic('add',this)">
+									<div class="toggle-thumb"></div>
+								</div>
+							</div>
+						</div>
+						<div id="setlist-tab-items" class="hidden">
+							<input type="hidden" id="setlistItemsModalSetlistId">
+							<div class="setlist-items-layout flex gap-3">
+								<div class="flex flex-col gap-1 shrink-0 min-h-0 w-75">
+									<input type="search" id="setlistSongPickerSearch" data-i18n="common.search" oninput="filterSetlistSongPicker()">
+									<div id="setlistSongPickerList" class="border border-blue-500/10 rounded-lg" data-scroll-fade></div>
+								</div>
+								<div class="flex flex-col min-w-0 min-h-0 grow">
+									<div class="lyrics-tab-bar flex gap-1 mb-1.75">
+										<button type="button" class="lyrics-tab modal-tab active" onclick="switchSetlistItemsTab('visual', this)" data-i18n="songs.tab_visual"></button>
+										<button type="button" class="lyrics-tab modal-tab" onclick="switchSetlistItemsTab('json', this)" data-i18n="songs.tab_json"></button>
+									</div>
+									<div class="lyrics-editor-wrap border border-blue-500/10 rounded-lg" data-scroll-fade>
+										<div id="setlistItemsList" class="flex flex-col"></div>
+										<textarea id="setlistItemsJson" class="lyrics-json-editor hidden w-full h-full text-[0.8rem] leading-relaxed px-3 py-2.5 bg-black/50 text-fg border-none resize-none focus:outline-none" spellcheck="false" placeholder="[]"></textarea>
+									</div>
+									<div class="flex gap-2 mt-2">
+										<button type="button" class="btn secondary grow" style="transition: opacity 0.25s ease;" onclick="addSetlistTextItem()">
+											<i data-lucide="plus" class="w-4 h-4"></i> <span data-i18n="setlists.add_text"></span>
+										</button>
+										<button type="button" class="btn secondary grow" style="transition: opacity 0.25s ease;" onclick="addSetlistGroupItem()">
+											<i data-lucide="folder-plus" class="w-4 h-4"></i> <span data-i18n="setlists.add_group"></span>
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</form>
+				</div>
+				<div class="modal-footer flex-row!">
+					<button type="button" class="btn secondary" onclick="closeAllModals()" data-i18n="common.cancel"></button>
+					<button type="submit" id="setlistSubmitBtn" class="btn primary" onclick="submitSetlistModalSave()">
+						<p data-i18n="common.save" data-button-loading-label></p>
+						<i data-lucide="loader-circle"></i>
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script>
+	    document.querySelectorAll('.setup-skeleton-line').forEach((el, i) => {
+			el.style.animationDelay = `${i * 0.15}s`;
+		});
+	</script>
+</body>
+</html>

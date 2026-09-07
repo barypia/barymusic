@@ -1,0 +1,28 @@
+{
+  "name": "barymusic",
+  "version": "1.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "test": "node --test --test-isolation=none"
+  },
+  "dependencies": {
+    "archiver": "^8.0.0",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.6.2",
+    "fast-xml-parser": "^5.10.1",
+    "multer": "^2.2.0",
+    "sharp": "^0.35.3",
+    "sqlite3": "^6.0.1",
+    "unzipper": "^0.12.5",
+    "ws": "^8.18.3"
+  },
+  "overrides": {
+    "tar": "7.5.22"
+  }
+}

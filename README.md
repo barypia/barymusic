@@ -8,7 +8,7 @@
     <a href="#windows"><img src="https://img.shields.io/badge/windows-portable-0078D6?logo=windows&logoColor=white"></a>
     <a href="#docker"><img src="https://img.shields.io/badge/docker-image-2496ED?logo=docker&logoColor=white"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-green"></a>
-    <img src="https://img.shields.io/badge/version-0.9.0--beta-blue">
+    <img src="https://img.shields.io/badge/version-1.0-blue">
   </p>
   <p align="center">Web app for managing songs, organizing setlists, and displaying live lyrics on external screens through a built-in channel system.</p>
   <p>
@@ -64,6 +64,10 @@ Windows releases are built from this repository and published together with a SH
 On first launch, choose a language and configure a few basic settings. You can change them at any time by double-clicking `Change Settings`.
 
 App data is stored outside the unpacked application, in `%LOCALAPPDATA%\BaryMusic\`.
+The launcher automatically creates the server configuration file at
+`%LOCALAPPDATA%\BaryMusic\config\.env`. The launcher sets the listening address
+and port according to the choices made during initial setup, so you do not need
+to copy `server/.env.example` into the Windows release.
  
 ### Docker
  
@@ -108,16 +112,20 @@ Available environment variables:
 | `CAN_ADD_SONGS`                | _(none)_ | Comma-separated list of users allowed to add songs besides admins |
 | `ALLOW_ALL_USERS_TO_ADD_SONGS` | `true` | Allow all users to add songs |
 | `ALLOW_REGISTRATION` | `true` | Allow new account registration |
-| `CORS_ORIGIN`             | `http://localhost`      | Frontend URL for CORS                  |
+| `CORS_ORIGIN`             | `http://localhost:3000` | Frontend URL for CORS                  |
 | `HOST`                    | `127.0.0.1` (`0.0.0.0` in Docker) | Address the Node.js server listens on |
 | `PORT`                    | `3000`                  | Service port  |
-| `BARYMUSIC_HOME`          | _(unset)_               | Root containing `config`, `data`, and `logs`; set automatically, except in development builds |
+| `BARYMUSIC_HOME`          | _(unset)_               | Root containing `config`, `data`, and `logs`; set automatically in Docker and Windows releases |
+
+In Docker, variables passed with `-e` or `--env-file` take precedence over values stored in `/var/lib/barymusic/config/.env`. Do not pass the local `server/.env` unchanged as a Docker `--env-file`: the container must listen on `HOST=0.0.0.0` for port mapping to work.
+
+Set `BARYMUSIC_HOME` in the process environment before starting the application, not inside `.env`, because this variable determines the location of the `.env` file itself.
 
 ---
 
 ## Development
  
-Requirements: **Node.js 18 or newer**
+Requirements: **Node.js 22 or newer**
  
 ```bash
 cd server
@@ -133,9 +141,15 @@ cd frontend
 npx @tailwindcss/cli -i styles.css -o vendor/tailwind/tailwind.css --watch
 ```
 
-App data is stored is `server` directory.
+App data is stored in the `server` directory.
 
-You can set up environment variables in a .env file during development.
+For local configuration, copy the example file and adjust its values as needed:
+
+```powershell
+Copy-Item server/.env.example server/.env
+```
+
+On macOS or Linux, use `cp server/.env.example server/.env`. The local `.env` file is ignored by Git and should not be committed. Variables set directly in the process environment take precedence over values from this file.
 
 To build the Windows release:
 
