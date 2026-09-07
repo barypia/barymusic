@@ -1,0 +1,14 @@
+{
+  "name": "frontend",
+  "version": "1.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "barypia",
+  "description": "Narzędzie all-in-one do przechowywania muzyki i wyświetlania na zewnętrznym monitorze.",
+  "dependencies": {
+    "tailwindcss": "^4.2.2"
+  }
+}

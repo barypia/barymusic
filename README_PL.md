@@ -8,7 +8,7 @@
     <a href="#windows"><img src="https://img.shields.io/badge/windows-portable-0078D6?logo=windows&logoColor=white"></a>
     <a href="#docker"><img src="https://img.shields.io/badge/docker-image-2496ED?logo=docker&logoColor=white"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-green"></a>
-    <img src="https://img.shields.io/badge/version-0.9.0--beta-blue">
+    <img src="https://img.shields.io/badge/version-1.0-blue">
   </p>
   <p align="center">Aplikacja webowa do zarządzania utworami, układania setlist i wyświetlania tekstów na zewnętrznych ekranach w czasie rzeczywistym za pomocą wbudowanego systemu kanałów.</p>
   <p>
@@ -64,6 +64,10 @@ Wydania na Windows są tworzone w tym repozytorium i publikowane razem z sumą S
 Przy pierwszym uruchomieniu wybierz język i skonfiguruj kilka podstawowych ustawień. Możesz je zmienić w każdej chwili klikając podwójnie `Change Settings`.
 
 Dane aplikacji są przechowywane poza rozpakowaną aplikacją, w `%LOCALAPPDATA%\BaryMusic\`.
+Launcher automatycznie tworzy plik konfiguracji serwera
+`%LOCALAPPDATA%\BaryMusic\config\.env`. Adres nasłuchiwania i port są ustawiane
+przez launcher zgodnie z wyborem dokonanym przy pierwszym uruchomieniu, więc nie
+trzeba kopiować `server/.env.example` do wydania Windows.
  
 ### Docker
  
@@ -108,16 +112,20 @@ Dostępne zmienne środowiskowe:
 | `CAN_ADD_SONGS`                | _(brak)_ | Lista użytkowników, którzy oprócz administratorów mogą dodawać utwory, oddzieleni przecinkami  |
 | `ALLOW_ALL_USERS_TO_ADD_SONGS` | `true` | Pozwala wszystkim użytkownikom dodawać utwory |
 | `ALLOW_REGISTRATION` | `true` | Pozwala na rejestrację nowych użytkowników |
-| `CORS_ORIGIN`             | `http://localhost`      | URL frontendu dla CORS                  |
-| `HOST`                    | `127.0.0.1` (`0.0.0.0` in Docker) | Addres, na którym nasłuchuje serwer Node.js |
+| `CORS_ORIGIN`             | `http://localhost:3000` | URL frontendu dla CORS                  |
+| `HOST`                    | `127.0.0.1` (`0.0.0.0` w Dockerze) | Adres, na którym nasłuchuje serwer Node.js |
 | `PORT`                    | `3000`                  | Port usługi  |
-| `BARYMUSIC_HOME`          | _(brak)_  | Katalog główny zawierający `config`, `data` i `logs`; ustawiany automatycznie z wyjątkiem wersji deweloperskiej   |
+| `BARYMUSIC_HOME`          | _(brak)_  | Katalog główny zawierający `config`, `data` i `logs`; ustawiany automatycznie w Dockerze i wydaniu Windows |
+
+W Dockerze zmienne przekazane przez `-e` lub `--env-file` mają pierwszeństwo nad wartościami zapisanymi w `/var/lib/barymusic/config/.env`. Nie przekazuj lokalnego `server/.env` bez zmian jako dockerowego `--env-file`: kontener musi nasłuchiwać na `HOST=0.0.0.0`, aby mapowanie portów działało.
+
+`BARYMUSIC_HOME` należy ustawić w środowisku procesu przed uruchomieniem aplikacji, a nie wewnątrz `.env`, ponieważ ta zmienna określa położenie samego pliku `.env`.
 
 ---
  
 ## Development
  
-Wymagania: **Node.js 18 lub nowszy**
+Wymagania: **Node.js 22 lub nowszy**
  
 ```bash
 cd server
@@ -135,7 +143,13 @@ npx @tailwindcss/cli -i styles.css -o vendor/tailwind/tailwind.css --watch
 
 Dane aplikacji są przechowywane w folderze `server`.
 
-Podczas developmentu możesz ustawiać zmienne środowiskowe w pliku .env.
+Skopiuj przykładową konfigurację przed pierwszym uruchomieniem i dostosuj ją w razie potrzeby:
+
+```powershell
+Copy-Item server/.env.example server/.env
+```
+
+W systemie macOS lub Linux użyj `cp server/.env.example server/.env`. Lokalny plik `server/.env` jest ignorowany przez Git i nie powinien być commitowany. Zmienne ustawione bezpośrednio w środowisku procesu mają pierwszeństwo nad wartościami z tego pliku.
 
 Aby zbudować wydanie Windows:
 
