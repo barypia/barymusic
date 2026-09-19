@@ -718,8 +718,11 @@ function collectEditorDataVisual(editorId) {
 			const tsInput = el.querySelector('.lyrics-editor-ts-input');
 			const tsVal = tsInput ? parseInt(tsInput.value) : NaN;
 			const ts = !isNaN(tsVal) && tsInput?.value !== '' ? tsVal : null;
+			const repeatInput = el.querySelector('.lyrics-editor-repeat-input');
+			const repeatVal = repeatInput ? parseInt(repeatInput.value) || null : null;
 			const entry = { id: firstChorusId };
 			if (ts !== null) entry.timestamp = ts;
+			if (repeatVal !== null) entry.repeat = repeatVal;
 			order.push(entry);
 			return;
 		}
