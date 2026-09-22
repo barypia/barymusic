@@ -524,6 +524,7 @@ function switchModalTab(prefix, tab, btn, noAnimation) {
 			const editorId = prefix + 'LyricsEditor';
 			const { jsonTextarea, addBtn } = getEditorElements(editorId);
 			const isJson = jsonTextarea && !jsonTextarea.classList.contains('hidden');
+            setElementDisplay(document.getElementById('songEditorTranspose'), true)
 			if (addBtn) collapseEditorBtn(addBtn, isJson);
 			requestAnimationFrame(function () { requestAnimationFrame(function () { resizeAllTextareas(editorId); }); });
 		}
