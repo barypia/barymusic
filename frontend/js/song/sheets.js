@@ -66,17 +66,73 @@ function initSheetDragging() {
 		}
 	}, { signal });
 
+	let pinch = null;
+
+	function getPinchDistance(e) {
+		const [a, b] = e.touches;
+		return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+	}
+
+	function getPinchMidpoint(e) {
+		const [a, b] = e.touches;
+		return {
+			x: (a.clientX + b.clientX) / 2,
+			y: (a.clientY + b.clientY) / 2,
+		};
+	}
+
 	viewer.addEventListener("touchstart", (e) => {
-		const touch = e.touches[0];
-		isDragging = true;
-		startX = touch.clientX;
-		startY = touch.clientY;
-		currentTranslateX = translateX;
-		currentTranslateY = translateY;
-	}, { passive: true, signal });
+		if (e.touches.length === 2) {
+			const mid = getPinchMidpoint(e);
+			pinch = {
+				lastDist: getPinchDistance(e),
+				lastMidX: mid.x,
+				lastMidY: mid.y,
+			};
+			isDragging = false;
+			e.preventDefault();
+			return;
+		}
+		if (e.touches.length === 1 && !pinch) {
+			const touch = e.touches[0];
+			isDragging = true;
+			startX = touch.clientX;
+			startY = touch.clientY;
+			currentTranslateX = translateX;
+			currentTranslateY = translateY;
+		}
+	}, { passive: false, signal });
 
 	document.addEventListener("touchmove", (e) => {
-		if (!isDragging) return;
+		if (pinch && e.touches.length === 2) {
+			e.preventDefault();
+			const dist = getPinchDistance(e);
+			const mid = getPinchMidpoint(e);
+			if (pinch.lastDist <= 0) return;
+
+			const viewerRect = viewer.getBoundingClientRect();
+			const centerX = viewerRect.left + viewerRect.width / 2;
+			const imgWidth = sheet.getBoundingClientRect().width / sheetZoom;
+
+			const px = (pinch.lastMidX - centerX) / sheetZoom - translateX + imgWidth / 2;
+			const py = (pinch.lastMidY - viewerRect.top) / sheetZoom - translateY;
+
+			const newZoom = Math.max(0.25, Math.min(5, sheetZoom * (dist / pinch.lastDist)));
+
+			sheetZoom = newZoom;
+			translateX = (mid.x - centerX) / newZoom - px + imgWidth / 2;
+			translateY = (mid.y - viewerRect.top) / newZoom - py;
+
+			pinch.lastDist = dist;
+			pinch.lastMidX = mid.x;
+			pinch.lastMidY = mid.y;
+
+			updateTransform();
+			return;
+		}
+
+		if (!isDragging || e.touches.length !== 1) return;
+		e.preventDefault();
 
 		const touch = e.touches[0];
 		const dx = touch.clientX - startX;
@@ -86,9 +142,24 @@ function initSheetDragging() {
 		translateY = currentTranslateY + dy / sheetZoom;
 
 		updateTransform();
-	}, { passive: true, signal });
+	}, { passive: false, signal });
 
-	document.addEventListener("touchend", () => {
+	document.addEventListener("touchend", (e) => {
+		if (pinch && e.touches.length < 2) {
+			pinch = null;
+			if (e.touches.length === 1) {
+				const touch = e.touches[0];
+				isDragging = true;
+				startX = touch.clientX;
+				startY = touch.clientY;
+				currentTranslateX = translateX;
+				currentTranslateY = translateY;
+			} else {
+				isDragging = false;
+				updateFitBtn();
+			}
+			return;
+		}
 		isDragging = false;
 		updateFitBtn();
 	}, { signal });
