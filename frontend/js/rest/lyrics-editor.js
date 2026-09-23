@@ -815,20 +815,72 @@ function initEditModalSheet(songId) {
 	}, { signal });
 	document.addEventListener('mouseup', () => { isDragging = false; }, { signal });
 
+	let pinch = null;
+
+	const getPinchDistance = (e) => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+	const getPinchMidpoint = (e) => ({
+		x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+		y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+	});
+
 	v.addEventListener('touchstart', (e) => {
-		isDragging = true;
-		startX = e.touches[0].clientX; startY = e.touches[0].clientY;
-		startTX = _editorTranslateX; startTY = _editorTranslateY;
-		e.preventDefault();
+		if (e.touches.length === 2) {
+			const mid = getPinchMidpoint(e);
+			pinch = { lastDist: getPinchDistance(e), lastMidX: mid.x, lastMidY: mid.y };
+			isDragging = false;
+			e.preventDefault();
+			return;
+		}
+		if (e.touches.length === 1 && !pinch) {
+			isDragging = true;
+			startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+			startTX = _editorTranslateX; startTY = _editorTranslateY;
+		}
 	}, { passive: false });
 	v.addEventListener('touchmove', (e) => {
-		if (!isDragging) return;
+		if (pinch && e.touches.length === 2) {
+			e.preventDefault();
+			const dist = getPinchDistance(e);
+			const mid = getPinchMidpoint(e);
+			if (pinch.lastDist <= 0) return;
+
+			const viewerRect = v.getBoundingClientRect();
+			const centerX = viewerRect.left + viewerRect.width / 2;
+			const imgWidth = img.getBoundingClientRect().width / _editorSheetZoom;
+
+			const px = (pinch.lastMidX - centerX) / _editorSheetZoom - _editorTranslateX + imgWidth / 2;
+			const py = (pinch.lastMidY - viewerRect.top) / _editorSheetZoom - _editorTranslateY;
+
+			_editorSheetZoom = Math.max(0.25, Math.min(5, _editorSheetZoom * (dist / pinch.lastDist)));
+			_editorTranslateX = (mid.x - centerX) / _editorSheetZoom - px + imgWidth / 2;
+			_editorTranslateY = (mid.y - viewerRect.top) / _editorSheetZoom - py;
+
+			pinch.lastDist = dist;
+			pinch.lastMidX = mid.x;
+			pinch.lastMidY = mid.y;
+
+			_editorUpdateSheetTransform(v, img);
+			return;
+		}
+
+		if (!isDragging || e.touches.length !== 1) return;
 		e.preventDefault();
 		_editorTranslateX = startTX + (e.touches[0].clientX - startX) / _editorSheetZoom;
 		_editorTranslateY = startTY + (e.touches[0].clientY - startY) / _editorSheetZoom;
 		_editorUpdateSheetTransform(v, img);
 	}, { passive: false });
-	v.addEventListener('touchend', () => { isDragging = false; });
+	v.addEventListener('touchend', (e) => {
+		if (pinch && e.touches.length < 2) {
+			pinch = null;
+			if (e.touches.length === 1) {
+				isDragging = true;
+				startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+				startTX = _editorTranslateX; startTY = _editorTranslateY;
+			}
+			return;
+		}
+		isDragging = false;
+	});
 
 	v.addEventListener('wheel', (e) => {
 		e.preventDefault();
