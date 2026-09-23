@@ -154,7 +154,6 @@ function closeAllDropdowns() {
 function closeAllPopups() {
     closeAllDropdowns();
     if (typeof closeContextMenu === 'function') closeContextMenu();
-    if (typeof closeEditorPopup === 'function') closeEditorPopup();
 }
 
 function initModals() {

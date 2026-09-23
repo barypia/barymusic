@@ -8,7 +8,8 @@ function getSectionTypes() {
 		{ value: 'intro',        label: i18n.t('songs.section_intro') },
 		{ value: 'outro',        label: i18n.t('songs.section_outro') },
 		{ value: 'interlude',    label: i18n.t('songs.section_interlude') },
-		{ value: 'chorus_ref',   label: i18n.t('songs.section_chorus_reference'), sep: true },
+		{ separator: true },
+		{ value: 'chorus_ref',   label: i18n.t('songs.section_chorus_reference') },
 	];
 }
 
@@ -227,29 +228,14 @@ function _updateEditorTransposeDisplay(editorId) {
 /* ==================== PICKER TYPU SEKCJI ==================== */
 
 function _openEditorTypePicker(section, editorId, anchorBtn) {
-	// Toggle — zamknij jeśli ten sam anchor jest już otwarty
-	if (_activeEditorPopup?._anchor === anchorBtn) { closeEditorPopup(); return; }
-	closeEditorPopup();
-
 	const currentType = section.dataset.type || 'verse';
-	const menu = document.createElement('div');
-	menu.className = 'editor-section-menu editor-type-picker';
-	menu.innerHTML = getSectionTypes().map(st => `
-		${st.sep ? '<div class="editor-menu-sep"></div>' : ''}
-		<button type="button" class="editor-menu-item${st.value === currentType ? ' editor-menu-item--active' : ''}" data-value="${st.value}">
-			<i data-lucide="check" style="${st.value === currentType ? '' : 'visibility:hidden'}"></i>
-			${st.label}
-		</button>
-	`).join('');
-
-	_showEditorPopup(menu, anchorBtn, 'left');
-
-	menu.addEventListener('click', (e) => {
-		const btn = e.target.closest('[data-value]');
-		if (!btn) return;
-		closeEditorPopup();
-		_applyEditorTypeChange(section, editorId, btn.dataset.value);
-	});
+	showTriggeredContextMenu(getSectionTypes().map(st => ({
+		separator: st.separator,
+		icon: st.value === currentType ? 'circle-check' : 'circle',
+		label: st.label,
+		active: st.value === currentType,
+		action: () => _applyEditorTypeChange(section, editorId, st.value)
+	})), anchorBtn);
 }
 
 function _applyEditorTypeChange(section, editorId, newType) {
@@ -301,7 +287,7 @@ function _initEditorDragHandle(handle, section, editor) {
 }
 
 function _startEditorDrag(startY, section, editor) {
-	closeEditorPopup();
+	closeAllPopups();
 
 	const EASING = 'cubic-bezier(0.25, 1, 0.5, 1)';
 	const DURATION = 200;
@@ -468,46 +454,48 @@ function closeEditorPopup() {
 /* ==================== MENU KONTEKSTOWE SEKCJI ==================== */
 
 function _openEditorSectionMenu(section, editorId, anchorBtn) {
-	// Toggle — zamknij jeśli ten sam anchor jest już otwarty
-	if (_activeEditorPopup?._anchor === anchorBtn) { closeEditorPopup(); return; }
-	closeEditorPopup();
-
 	const editor = document.getElementById(editorId);
 	const isFirst = !section.previousElementSibling;
 	const isLast = !section.nextElementSibling;
 
-	const menu = document.createElement('div');
-	menu.className = 'editor-section-menu';
-	menu.innerHTML = `
-		<button type="button" class="editor-menu-item" data-action="move-top" ${isFirst ? 'disabled' : ''}><i data-lucide="chevrons-up"></i> ${i18n.t('songs.move_to_top')}</button>
-		<button type="button" class="editor-menu-item" data-action="move-up" ${isFirst ? 'disabled' : ''}><i data-lucide="chevron-up"></i> ${i18n.t('songs.move_up')}</button>
-		<button type="button" class="editor-menu-item" data-action="move-down" ${isLast ? 'disabled' : ''}><i data-lucide="chevron-down"></i> ${i18n.t('songs.move_down')}</button>
-		<button type="button" class="editor-menu-item" data-action="move-bottom" ${isLast ? 'disabled' : ''}><i data-lucide="chevrons-down"></i> ${i18n.t('songs.move_to_bottom')}</button>
-		<div class="editor-menu-sep"></div>
-		<button type="button" class="editor-menu-item" data-action="duplicate"><i data-lucide="copy"></i> ${i18n.t('songs.duplicate_section')}</button>
-	`;
-
-	_showEditorPopup(menu, anchorBtn, 'right');
-
-	menu.addEventListener('click', (e) => {
-		const btn = e.target.closest('[data-action]');
-		if (!btn || btn.disabled) return;
-		const action = btn.dataset.action;
-		closeEditorPopup();
-		if (action === 'move-up') {
-			const prev = section.previousElementSibling;
-			if (prev) editor.insertBefore(section, prev);
-		} else if (action === 'move-down') {
-			const next = section.nextElementSibling;
-			if (next) editor.insertBefore(next, section);
-		} else if (action === 'move-top') {
-			editor.insertBefore(section, editor.firstElementChild);
-		} else if (action === 'move-bottom') {
-			editor.appendChild(section);
-		} else if (action === 'duplicate') {
-			_duplicateEditorSection(section, editorId);
+	showTriggeredContextMenu([
+		{
+			icon: 'chevrons-up',
+			label: i18n.t('songs.move_to_top'),
+			disabled: isFirst,
+			action: () => { editor.insertBefore(section, editor.firstElementChild); }
+		},
+		{
+			icon: 'chevron-up',
+			label: i18n.t('songs.move_up'),
+			disabled: isFirst,
+			action: () => {
+				const prev = section.previousElementSibling;
+				if (prev) editor.insertBefore(section, prev);
+			}
+		},
+		{
+			icon: 'chevron-down',
+			label: i18n.t('songs.move_down'),
+			disabled: isLast,
+			action: () => {
+				const next = section.nextElementSibling;
+				if (next) editor.insertBefore(next, section);
+			}
+		},
+		{
+			icon: 'chevrons-down',
+			label: i18n.t('songs.move_to_bottom'),
+			disabled: isLast,
+			action: () => { editor.appendChild(section); }
+		},
+		{ separator: true },
+		{
+			icon: 'copy',
+			label: i18n.t('songs.duplicate_section'),
+			action: () => _duplicateEditorSection(section, editorId)
 		}
-	});
+	], anchorBtn);
 }
 
 function _duplicateEditorSection(section, editorId) {
