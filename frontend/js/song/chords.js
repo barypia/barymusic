@@ -37,7 +37,7 @@ const CHORD_NAMES_SHARP = [
 
 const CHORD_NAMES_FLAT = [
   'C', 'D♭', 'D', 'E♭', 'E', 'F',
-  'G♭', 'G', 'A♭', 'A', 'B♭', 'H♭', 'B'
+  'G♭', 'G', 'A♭', 'A', 'B♭', 'H'
 ]
 
 const CHORD_NAMES_SHARP_MINOR = [
@@ -47,7 +47,7 @@ const CHORD_NAMES_SHARP_MINOR = [
 
 const CHORD_NAMES_FLAT_MINOR = [
   'c', 'd♭', 'd', 'e♭', 'e', 'f',
-  'g♭', 'g', 'a♭', 'a', 'b♭', 'h♭', 'b'
+  'g♭', 'g', 'a♭', 'a', 'b♭', 'h'
 ];
 
 let currentTranspose = 0;
