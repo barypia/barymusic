@@ -70,6 +70,9 @@ function runSimplePerformanceTest() {
 		if (weak) {
 			updateSettings(current => { current.blurEnabled = false; });
 			syncSettingsControls(settings);
+			document.getElementById('performanceNotice')?.classList.remove('hidden');
+			const noticeText = document.getElementById('performanceNoticeText');
+			if (noticeText) noticeText.textContent = i18n.t('settings.appearance.performance_notice_low');
 		}
 	};
 
@@ -307,9 +310,31 @@ function updateChannelDisplaySettingsDescription() {
 	description.textContent = i18n.t(translationKey);
 }
 
+function showPerformanceNotice() {
+	const notice = document.getElementById('performanceNotice');
+	if (!notice) return;
+
+	const result = loadPerformanceResult();
+	if (!result) return;
+
+	const text = document.getElementById('performanceNoticeText');
+	if (!text) return;
+
+	text.textContent = i18n.t(result.weak
+		? 'settings.appearance.performance_notice_low'
+		: 'settings.appearance.performance_notice_high');
+	notice.classList.toggle('hidden', Boolean(result.noticeDismissed));
+
+	document.getElementById('performanceNoticeClose')?.addEventListener('click', () => {
+		notice.classList.add('hidden');
+		savePerformanceResult({ ...result, noticeDismissed: true });
+	}, { once: true });
+}
+
 function initSettings() {
 	updateChannelDisplaySettingsDescription();
 	syncSettingsControls(settings);
+	showPerformanceNotice();
 	const settingsBody = document.getElementById('settingsBody');
 	if (settingsBody) setupScrollFade(settingsBody, settingsBody);
 	initDisplayPreviewResize();

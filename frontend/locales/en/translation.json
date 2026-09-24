@@ -443,7 +443,9 @@
       "blur_12px": "High",
       "blur_16px": "Very High",
       "reduce_animations_label": "Reduce animations",
-      "reduce_animations_description": "Disables transitions and animations. Recommended for lower-end hardware."
+      "reduce_animations_description": "Disables transitions and animations. Recommended for lower-end hardware.",
+      "performance_notice_low": "Lower performance detected — blur has been automatically disabled for smoother operation.",
+      "performance_notice_high": "Good performance detected — visual effects run smoothly on this device."
     },
     "account": {
       "status": "Status",

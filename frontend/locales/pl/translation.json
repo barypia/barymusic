@@ -443,7 +443,9 @@
       "blur_12px": "Wysoka",
       "blur_16px": "Bardzo wysoka",
       "reduce_animations_label": "Ogranicz animacje",
-      "reduce_animations_description": "Wyłącza przejścia i animacje. Zalecane na słabszym sprzęcie."
+      "reduce_animations_description": "Wyłącza przejścia i animacje. Zalecane na słabszym sprzęcie.",
+      "performance_notice_low": "Wykryto niższą wydajność — rozmycie zostało automatycznie wyłączone, aby zapewnić płynniejsze działanie.",
+      "performance_notice_high": "Wykryto dobrą wydajność — efekty graficzne działają płynnie na tym urządzeniu."
     },
     "account": {
       "status": "Status",
