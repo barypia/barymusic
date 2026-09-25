@@ -8,7 +8,7 @@
     <a href="#windows"><img src="https://img.shields.io/badge/windows-portable-0078D6?logo=windows&logoColor=white"></a>
     <a href="#docker"><img src="https://img.shields.io/badge/docker-image-2496ED?logo=docker&logoColor=white"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-green"></a>
-    <img src="https://img.shields.io/badge/version-1.0-blue">
+    <img src="https://img.shields.io/badge/version-1.1-blue">
   </p>
   <p align="center">Aplikacja webowa do zarządzania utworami, układania setlist i wyświetlania tekstów na zewnętrznych ekranach w czasie rzeczywistym za pomocą wbudowanego systemu kanałów.</p>
   <p>
@@ -57,7 +57,7 @@
 ## Get started
 ### Windows
 
-Pobierz plik `BaryMusic-1.0-windows-x64.zip` z [najnowszego wydania](https://github.com/barypia/barymusic/releases), rozpakuj, a następnie kliknij dwukrotnie `Start BaryMusic.bat`.  
+Pobierz plik `BaryMusic-1.1-windows-x64.zip` z [najnowszego wydania](https://github.com/barypia/barymusic/releases/tag/v1.1), rozpakuj, a następnie kliknij dwukrotnie `Start BaryMusic.bat`.  
 
 Wydania na Windows są tworzone w tym repozytorium i publikowane razem z sumą SHA-256.
 
