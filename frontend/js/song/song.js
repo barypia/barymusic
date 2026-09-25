@@ -151,7 +151,7 @@ function _openSongItemContextMenu(song, pos) {
 			action: () => editSong(song)
 		},
 		{
-			icon: 'trash-2',
+			icon: 'trash',
 			label: i18n.t('songs.delete'),
 			disabled: !canEdit,
 			danger: true,

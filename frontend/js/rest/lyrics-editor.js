@@ -91,7 +91,7 @@ function addEditorSection(editorId, type = 'verse', text = '', repeat = null, ti
 				</button>
 				${metaChips}
 				<div class="flex gap-1 ml-auto">
-					<button type="button" class="btn small danger editor-remove-btn" title="${i18n.t('songs.remove_section')}"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+					<button type="button" class="btn small danger editor-remove-btn" title="${i18n.t('songs.remove_section')}"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
 					<div class="w-px h-3.5 bg-white/10 self-center shrink-0"></div>
 					<div class="editor-section-menu-wrap">
 						<button type="button" class="btn small secondary editor-menu-btn" title="${i18n.t('songs.more_options')}"><i data-lucide="ellipsis" class="w-3.5 h-3.5"></i></button>

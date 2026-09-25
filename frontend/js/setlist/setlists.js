@@ -626,7 +626,7 @@ function _openSetlistCardContextMenu(sl, pos) {
 			action: () => openEditSetlistModal(sl.id)
 		},
 		{
-			icon: 'trash-2',
+			icon: 'trash',
 			label: i18n.t('setlists.delete'),
 			disabled: !isOwner,
 			danger: true,

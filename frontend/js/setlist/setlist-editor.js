@@ -311,7 +311,7 @@ function _renderEditorGroup(container, item, path) {
         <div class="editor-drag-handle cursor-grab" title="${i18n.t('setlists.group_icon_title')}"><i data-lucide="grip-vertical" class="w-3.5 h-3.5"></i></div>
         <i data-lucide="folder" class="w-3.5 h-3.5 text-accent/70 shrink-0"></i>
         <input type="text" class="flex-1 min-w-0 bg-transparent border-none outline-none text-sm font-semibold text-accent/90 placeholder:text-secondary/50" placeholder="${i18n.t('setlists.group_placeholder')}" value="${escapeHtml(item.title || '')}">
-        <button type="button" class="btn small danger" title="${i18n.t('setlists.remove_group')}"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+        <button type="button" class="btn small danger" title="${i18n.t('setlists.remove_group')}"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
     `;
     group.appendChild(header);
 
@@ -441,7 +441,7 @@ function _renderEditorLeaf(container, item, path) {
                     ${item.songKey ? `<span class="text-xs text-secondary ml-1.5">${escapeHtml(item.songKey)}</span>` : ''}
                 </div>
                 <div class="flex gap-1 ml-auto">
-                    <button type="button" class="btn small danger" title="${i18n.t('setlists.remove_item')}"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                    <button type="button" class="btn small danger" title="${i18n.t('setlists.remove_item')}"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
                 </div>
             </div>`;
     } else {
@@ -457,7 +457,7 @@ function _renderEditorLeaf(container, item, path) {
                 <div class="w-px h-3.5 bg-white/10 shrink-0"></div>
                 <input type="text" class="lyrics-editor-meta-input flex-1 min-w-0" placeholder="${i18n.t('setlists.text_item_title')}" value="${escapeHtml(item.title || '')}" style="background:transparent;border:none;outline:none;font-size:0.8rem;color:var(--text-primary)">
                 <div class="flex gap-1 ml-auto">
-                    <button type="button" class="btn small danger" title="${i18n.t('setlists.remove_item')}"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                    <button type="button" class="btn small danger" title="${i18n.t('setlists.remove_item')}"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
                 </div>
             </div>
             <div class="lyrics-editor-textarea-wrap">

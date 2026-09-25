@@ -255,7 +255,7 @@ function _openSongInfoContextMenu(pos) {
 			action: () => openTransferSettingsForSong(currentSong.id)
 		},
 		{
-			icon: 'trash-2',
+			icon: 'trash',
 			label: i18n.t('songs.delete'),
 			disabled: !canEdit,
 			danger: true,
