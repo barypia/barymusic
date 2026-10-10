@@ -359,7 +359,7 @@ function portableFilename(value, fallback = 'song') {
 	return (clean || fallback).slice(0, 80);
 }
 
-// Eksport i import - funkcje pomocnicze
+// Eksport i import — funkcje pomocnicze
 function dbAll(db, sql, params = []) {
 	return new Promise((resolve, reject) => {
 		db.all(sql, params, (error, rows) => error ? reject(error) : resolve(rows));
@@ -1796,7 +1796,7 @@ wss.on('connection', async (ws, req) => {
 				if (ws.userId) {
 					const settingsJson = JSON.stringify(input.settings);
 					
-					// Sprawdź czy istnieją już ustawienia dla tego kanału
+					// Sprawdź, czy istnieją już ustawienia dla tego kanału
 					db.get(
 						'SELECT id FROM user_settings WHERE userId = ? AND channelId = ?',
 						[ws.userId, ws.currentChannel],
@@ -1845,7 +1845,7 @@ wss.on('connection', async (ws, req) => {
 						}
 					);
 				} else {
-					// Jeśli brak userId (nie zalogowany), tylko rozesłanie bez zapisu
+					// Jeśli brak userId (niezalogowany), tylko rozesłanie bez zapisu
 					const settingsMsg = JSON.stringify({
 						type: 'display_settings_update',
 						settings: input.settings
@@ -1867,7 +1867,7 @@ wss.on('connection', async (ws, req) => {
 	});
 
 	ws.on('close', () => {
-		// rozłączono -> usuń kanały w których client_id jest ownerem lub klientem
+		// rozłączono -> usuń kanały, w których client_id jest ownerem lub klientem
 		deleteUserFromChannels(ws)
 		deleteOwnedChannels(ws);
 		broadcastChannelUpdate();
@@ -1952,7 +1952,7 @@ function deleteOwnedChannels(ws) {
 
 function createNewChannel(channel_name, ownerWs) {
 	// tworzenie nowego kanału o nazwie channel_nane -> ustawianie właściciela na client_id
-	// utwórz najniższy niestniejący ID kanału
+	// utwórz najniższy nieistniejący ID kanału
 	let newId = 1;
 	while (channels.hasOwnProperty(newId)) { // czy istnieje kanał o takim id?
 		newId++;
@@ -2220,7 +2220,7 @@ app.use(express.static(frontendPath, {
 
 const authLimiter = rateLimit({
     windowMs: 30 * 1000, // 30 sekund
-    max: 5, // max 5 prób
+    max: 5, // max. 5 prób
     message: { error: 'Zbyt wiele prób, spróbuj ponownie za 30 sekund.' },
     standardHeaders: true,
     legacyHeaders: false,
@@ -2339,7 +2339,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 					return res.status(401).json({ error: 'Nieprawidłowy login lub (i) hasło' });
 				}
 
-				// Hasło OK - generuj token
+				// Hasło OK — generuj token
 				const token = createClientId();
 				const expiresAt = Math.floor(Date.now() / 1000) + (SESSION_TTL_DAYS * 24 * 60 * 60);
 
@@ -2371,7 +2371,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 	}
 });
 
-// Wylogowywaie
+// Wylogowywanie
 app.post('/api/auth/logout', async (req, res) => {
 	const token = req.cookies.authToken;
 
@@ -2399,7 +2399,7 @@ app.post('/api/auth/logout', async (req, res) => {
 	});
 });
 
-// Funkcja pomocnicza - Sprawdź token
+// Funkcja pomocnicza — Sprawdź token
 function verifyToken(token) {
 	return new Promise((resolve, reject) => {
 		db.get(
@@ -2673,7 +2673,7 @@ app.put('/api/songs/:id', requireAuthenticated, songWriteLimiter, async (req, re
 		return res.status(401).json({ error: 'Nieprawidłowy token' });
 	}
 
-	// Sprawdź czy użytkownik może edytować
+	// Sprawdź, czy użytkownik może edytować
 	db.get(
 		'SELECT uploadedBy FROM songs WHERE id = ?',
 		[id],
@@ -2968,7 +2968,7 @@ app.delete('/api/songs/:id', requireAuthenticated, async (req, res) => {
 		return res.status(401).json({ error: 'Nieprawidłowy token' });
 	}
 
-	// Sprawdź czy użytkownik może usunąć
+	// Sprawdź, czy użytkownik może usunąć
 	db.get(
 		'SELECT uploadedBy FROM songs WHERE id = ?',
 		[id],
@@ -3546,7 +3546,7 @@ app.put('/api/channels/:channelId/settings', requireAuthenticated, async (req, r
 	);
 });
 
-// WebSocket keepalive + pomiar latencji — ping co 20s, rozłącz jeśli brak odpowiedzi
+// WebSocket keepalive + pomiar latencji — ping co 20s, rozłącz, jeśli brak odpowiedzi
 const WS_PING_INTERVAL = 20000;
 setInterval(() => {
 	wss.clients.forEach(client => {
@@ -3788,7 +3788,7 @@ wss.on('connection', (client) => {
 	client._wsAlive = true;
 });
 
-// czyść tokeny które wygasły - sprawdzaj co godzinę
+// czyść tokeny, które wygasły — sprawdzaj co godzinę
 setInterval(() => {
     const now = Math.floor(Date.now() / 1000);
     db.run('DELETE FROM sessions WHERE expiresAt < ?', [now], (err) => {
@@ -3796,7 +3796,7 @@ setInterval(() => {
     });
 }, 60 * 60 * 1000).unref();
 
-// czyść listę prób logowania - co minutę
+// czyść listę prób logowania — co minutę
 setInterval(() => {
     const now = Date.now();
     for (let [ip, data] of loginAttempts.entries()) {

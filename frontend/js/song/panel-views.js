@@ -388,8 +388,6 @@ const refreshPanelContent = {
             updateAddSongButtonVisibility(deleteBtn, currentSong?.uploadedBy ?? null);
         }
 
-        const titleEl = viewBody.querySelector('#songTitle');
-        const idEl = viewBody.querySelector('#songId');
         const titleEl = viewBody.querySelector('#songInfo-Title');
         const idEl = viewBody.querySelector('#songInfo-Id');
         if (titleEl) titleEl.textContent = currentSong.title;

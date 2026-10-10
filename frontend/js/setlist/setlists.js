@@ -342,7 +342,7 @@ function navigateToSetlistItem(index) {
         _displaySetlistTextItem(item);
     }
 
-    // Wyślij przez WebSocket jeśli jesteśmy ownerem kanału
+    // Wyślij przez WebSocket, jeśli jesteśmy ownerem kanału
     if (isNewChannel && ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'setlist_select', setlistId: activeSetlist.id, itemIndex: index }));
     }

@@ -174,12 +174,12 @@ function autoResizeFont(displayElement, displaySettings) {
         return;
     }
 
-        // Marginesy są granicami dla tekstu, a nie klasycznym CSS paddingiem,
+        // Marginesy są granicami dla tekstu, a nie klasycznym CSS padding,
         // który przesuwałby środek dostępnego obszaru.
         el.style.padding = '0';
 
         // #display jest kontenerem flex, który może ścisnąć anonimowy element
-        // tekstowy. Mierzymy więc kopię poza flexem, aby otrzymać rzeczywisty
+        // tekstowy. Mierzymy więc kopię poza flex, aby otrzymać rzeczywisty
         // rozmiar tekstu, a nie rozmiar przyciętego kontenera.
         const styles = getComputedStyle(el);
         const measure = document.createElement('div');

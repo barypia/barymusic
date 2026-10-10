@@ -239,7 +239,7 @@ function scrollSheetToY(anchor) {
 		sheetZoom = anchor.relativeZoom;
 	}
 
-	// Wysokość obrazu w pikselach CSS (przy scale=1, czyli bez zoomu)
+	// Wysokość obrazu w pikselach CSS (przy scale = 1, czyli bez zoomu)
 	const imgCssHeight = img.getBoundingClientRect().height / sheetZoom || img.clientHeight;
 	const viewerHeight = viewer.clientHeight;
 
@@ -268,7 +268,7 @@ function getSheetAnchor() {
 	};
 }
 
-// Context menu - sheets
+// Context menu — sheets
 function _openSheetsContextMenu(pos, trigger) {
 	const canEdit = currentIsAdmin || (currentUser && currentUser === currentSong?.uploadedByUsername);
 

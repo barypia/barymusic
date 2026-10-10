@@ -59,9 +59,9 @@
 
 Download the `BaryMusic-1.1-windows-x64.zip` file from the [latest release](https://github.com/barypia/barymusic/releases/tag/v1.1), unpack it, then double-click `Start BaryMusic`.
 
-Windows releases are built from this repository and published together with a SHA-256 checksum.
+Windows releases are built from this repository and published together with an SHA-256 checksum.
 
-On first launch, choose a language and configure a few basic settings. You can change them at any time by double-clicking `Change Settings`.
+On the first launch, choose a language and configure a few basic settings. You can change them at any time by double-clicking `Change Settings`.
 
 App data is stored outside the unpacked application, in `%LOCALAPPDATA%\BaryMusic\`.
 The launcher automatically creates the server configuration file at

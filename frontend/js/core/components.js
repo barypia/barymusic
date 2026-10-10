@@ -266,7 +266,7 @@ function closeAllModals(includePersistent = false) {
     let modals = [...document.querySelectorAll('.modal-open')]
         .filter(m => includePersistent || !m.hasAttribute('data-modal-persistent'));
 
-    // Zbierz ID modali do których wrócić (przez data-opened-over)
+    // Zbierz ID modali, do których wrócić (przez data-opened-over)
     const restoreIds = new Set();
     if (!includePersistent) {
         modals.forEach(m => {

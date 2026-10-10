@@ -20,7 +20,7 @@ if (lyricsControls) {
 function animateLyricCards(changeFn) {
     const cards = [...document.querySelectorAll('.lyric-card')];
     const first = cards.map(card => card.getBoundingClientRect().height);
-    // Wyłącz transition na elementach wewnętrznych żeby getBoundingClientRect po changeFn
+    // Wyłącz transition na elementach wewnętrznych, żeby getBoundingClientRect po changeFn
     // zwrócił docelową wysokość, a nie pośrednią z trwającej animacji CSS
     const inner = [...document.querySelectorAll('.chord')];
     inner.forEach(el => { el.style.transition = 'none'; });
@@ -84,7 +84,7 @@ function populateLyricsGrid(lyricsGrid, song) {
                     const sortedChords = [...line.chords].sort((a, b) => a.position - b.position);
 
                     // Buduj listę chunków: { chords[], text, sep }
-                    // sep=true oznacza że po tym chunku jest spacja (punkt łamania)
+                    // sep = true oznacza, że po tym chunku jest spacja (punkt łamania)
                     const chunks = [];
 
                     const firstChordPos = sortedChords[0].position;
@@ -300,7 +300,7 @@ function updateLyricHighlight() {
             const prevCard = card.previousElementSibling;
             const nextCard = card.nextElementSibling;
 
-            // Sprawdź czy poprzednia i następna karta istnieją
+            // Sprawdź, czy poprzednia i następna karta istnieją
             const hasPrevCard = prevCard && prevCard.classList.contains('lyric-card');
             const hasNextCard = nextCard && nextCard.classList.contains('lyric-card');
 
@@ -323,7 +323,7 @@ function updateLyricHighlight() {
                     card.scrollIntoView({ behavior: 'smooth', block: 'end' });
                 }
             }
-            // Jeśli są sąsiedzi - sprawdź ich widoczność
+            // Jeśli są sąsiedzi — sprawdź ich widoczność
             else {
                 const prevVisible = prevCard.getBoundingClientRect().top >= containerRect.top &&
                                    prevCard.getBoundingClientRect().bottom <= containerRect.bottom;
@@ -337,7 +337,7 @@ function updateLyricHighlight() {
                 }
             }
 
-            // Dodaj przycisk clear jeśli nie istnieje
+            // Dodaj przycisk clear, jeśli nie istnieje
             const label = card.querySelector('.lyric-label');
             if (label && !label.querySelector('.card-clear-btn')) {
                 const clearBtn = document.createElement('button');
@@ -453,7 +453,7 @@ async function _removeAudioTimestamp(lyric, card) {
 	}
 }
 
-// Context menu - lyrics
+// Context menu — lyrics
 function _openLyricCardContextMenu(lyric, index, card, pos) {
 	const canEdit = currentIsAdmin || (currentUser && currentUser === currentSong?.uploadedByUsername);
 	const hasChords = /\[[A-GHa-gh][^\]]*\]/.test(lyric.text || '');

@@ -55,10 +55,10 @@ let currentTranspose = 0;
 
 
 function parseChords(text) {
-    // Rozszerzony regex dla akordów - obsługuje więcej wariantów
+    // Rozszerzony regex dla akordów — obsługuje więcej wariantów
     const chordRegex = /\[([A-GHa-gh][♯♭#b]?(?:m|maj|min|dim|aug|sus|add|M)?[0-9]*(?:\/[A-GHa-gh][♯♭#b]?)?)\]/g;
 
-    // Rozbij tekst na linie - obsługa różnych formatów
+    // Rozbij tekst na linie — obsługa różnych formatów
     const lines = text
         .replace(/<\/p>/gi, '\n')
         .replace(/<p>/gi, '')
@@ -97,7 +97,7 @@ function parseChords(text) {
         chordRegex.lastIndex = 0;
         const plainText = line.replace(chordRegex, '');
 
-        // Dodaj linię nawet jeśli jest pusta (zachowaj puste linie dla formatowania)
+        // Dodaj linię, nawet jeśli jest pusta (zachowaj puste linie dla formatowania)
         if (plainText.trim() || chords.length > 0) {
             parsedLines.push({
                 text: plainText,  // Zachowujemy spacje na początku/końcu
@@ -158,7 +158,7 @@ function transposeAllChords(semitones) {
 
     currentTranspose = newTranspose;
 
-    // Określ czy używać bemoli czy krzyżyków
+    // Określ czy używać bemoli, czy krzyżyków
     const normalizedTranspose = ((currentTranspose % 12) + 12) % 12;
     const preferFlats = [1, 3, 6, 8, 10, 5].includes(normalizedTranspose);
 

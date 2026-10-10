@@ -2,7 +2,7 @@
 
 let _editorItems = [];
 
-// ─── Normaliza items (kompatybilność wsteczna: content→lines) ────────────────
+// ─── Normalizacja items (kompatybilność wsteczna: content→lines) ────────────────
 
 function _normalizeSetlistItem(item) {
     if (item.type === 'song') {
@@ -141,7 +141,7 @@ async function submitSetlistModalSave() {
         }
         if (editId) delete _setlistCache[parseInt(editId)];
 
-        // Odczytaj items z JSON-mode jeśli aktywny
+        // Odczytaj items z JSON-mode, jeśli aktywny
         const jsonTA = document.getElementById('setlistItemsJson');
         const jsonMode = jsonTA && !jsonTA.classList.contains('hidden');
         if (jsonMode) {

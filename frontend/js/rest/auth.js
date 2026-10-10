@@ -219,7 +219,7 @@ function updateLoginStuff(isLoggedIn, _skipConnectModal = false) {
 			connectModalShowStart();
 		}
 
-		// Ukryj zakładkę administratora i przełącz aktywną jeśli trzeba
+		// Ukryj zakładkę administratora i przełącz aktywną, jeśli trzeba
 		if (typeof setAdminTabVisible === 'function') setAdminTabVisible(false);
 	}
 

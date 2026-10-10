@@ -41,7 +41,7 @@ function loadV2Sections(editorId, data) {
 	data.order.forEach(function (entry) {
 		const section = data.sections[entry.id];
 		if (!section) return;
-		// Refren powtórzony — wstaw chorus_ref zamiast duplikować tekst
+		// Refren powtórzony — wstaw chorus_ref, zamiast duplikować tekst
 		if (section.type === 'chorus' && seenIds.has(entry.id)) {
 			addEditorSection(editorId, 'chorus_ref', '', entry.repeat ?? null, entry.timestamp ?? null, null);
 			return;
@@ -328,7 +328,7 @@ function _startEditorDrag(startY, section, editor) {
 			// Skocz od razu do poprzedniej pozycji (bez animacji)
 			el.style.transition = 'none';
 			el.style.transform  = `translateY(${dy}px)`;
-			// Wymuś reflow żeby przeglądarka "widziała" translateY
+			// Wymuś reflow, żeby przeglądarka "widziała" translateY
 			el.offsetHeight; // eslint-disable-line no-unused-expressions
 			// Teraz animuj do 0
 			el.style.transition = `transform ${DURATION}ms ${EASING}`;
@@ -385,7 +385,7 @@ function _startEditorDrag(startY, section, editor) {
 		editor.insertBefore(section, ph);
 		ph.remove();
 
-		// Animuj pozostałe sekcje które się ruszyły
+		// Animuj pozostałe sekcje, które się ruszyły
 		_flipOthers(before);
 
 		// Animuj samą przeciąganą sekcję — FLIP z pozycji float → landing
@@ -555,7 +555,7 @@ function resizeAllTextareas(editorId) {
 function setEditorMediaContext(editorId, hasAudio, hasSheets) {
 	const editor = document.getElementById(editorId);
 	if (!editor) return;
-	// Zapisz kontekst żeby nowe sekcje też go respektowały
+	// Zapisz kontekst, żeby nowe sekcje też go respektowały
 	editor.dataset.hasAudio  = hasAudio  ? '1' : '';
 	editor.dataset.hasSheets = hasSheets ? '1' : '';
 	_applyEditorMediaContext(editor);
@@ -769,7 +769,7 @@ function initEditModalSheet(songId) {
 	const viewer = document.getElementById('songSheetViewer');
 	if (!viewer) return;
 
-	// Klonuj viewer żeby usunąć stare event listenery
+	// Klonuj viewer, żeby usunąć stare event listenery
 	const freshViewer = viewer.cloneNode(false);
 	viewer.parentNode.replaceChild(freshViewer, viewer);
 	const v = freshViewer;
@@ -945,7 +945,7 @@ function initEditModalAudio(songId) {
 	const audio = document.getElementById('editModalAudioPlayer');
 	if (!audio) return;
 
-	// Zastąp element audio klonem żeby usunąć stare event listenery
+	// Zastąp element audio klonem, żeby usunąć stare event listenery
 	const fresh = audio.cloneNode(true);
 	audio.parentNode.replaceChild(fresh, audio);
 	const a = fresh;

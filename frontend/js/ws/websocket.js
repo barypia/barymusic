@@ -31,7 +31,7 @@ function connectWebSocket() {
 		ws.send(JSON.stringify({ type: 'id', clientId: client_id }));
 
 		// Po wyjściu z biblioteki modal czeka na ponowne połączenie.
-		// Przełącz go z ekranu ładowania dopiero, gdy socket jest już otwarty.
+		// Przełącz go z ekranu ładowania, dopiero gdy socket jest już otwarty.
 		const connectModal = document.getElementById('connectModal');
 		const loadingScreen = document.getElementById('connectScreenLoading');
 		if (connectModal?.classList.contains('modal-open') && !loadingScreen?.classList.contains('hidden')) {
