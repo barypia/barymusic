@@ -1376,7 +1376,7 @@ select option {
 input, textarea {
   background: var(--color-elevated);
   border: 1px solid var(--color-neutral-border);
-  border-radius: var(--border-radius-md, 8px);
+  border-radius: 8px;
   color: var(--text-primary);
   padding: 0.375rem 0.75rem;
   font-size: 0.875rem;
@@ -1402,7 +1402,7 @@ input[type="range"] {
   appearance: none;
   background: var(--color-neutral-hover-bg);
   border: 1px solid var(--color-neutral-border);
-  border-radius: var(--border-radius-md, 8px);
+  border-radius: 8px;
   cursor: pointer;
   height: 4px;
   outline: none;
@@ -1429,7 +1429,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 input[type="range"]::-moz-range-track {
   height: 4px;
-  border-radius: var(--border-radius-md, 8px);
+  border-radius: 8px;
   background: var(--color-neutral-hover-bg);
   border: 1px solid var(--color-neutral-border);
 }
@@ -1618,7 +1618,7 @@ svg[data-lucide="loader-circle"] {
   box-shadow: 0 8px 24px rgba(0,0,0,0.28),	0 0 0 1px var(--color-active-glow),	inset 0 1px 0 rgba(255,255,255,0.05);
 }
 .list-group {
-  border-style: var(--tw-border-style);
+  border-style: solid;
   border-width: 1px;
   border-color: var(--color-neutral-border);
   background-color: color-mix(in srgb, #fff 2.5%, transparent);
@@ -1650,8 +1650,8 @@ svg[data-lucide="loader-circle"] {
   padding-block: calc(var(--spacing) * 3);
   cursor: default;
   transition-property: opacity, color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
-  transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
-  transition-duration: var(--tw-duration, var(--default-transition-duration));
+  transition-timing-function: var(--default-transition-timing-function);
+  transition-duration: var(--default-transition-duration);
 }
 .list-item[onclick] {
   cursor: pointer;
@@ -1660,7 +1660,6 @@ svg[data-lucide="loader-circle"] {
   background-color: var(--color-secondary-hover-bg);
 }
 .list-item:not(:first-child) {
-  border-top-style: var(--tw-border-style);
   border-top-width: 1px;
   border-color: var(--color-rim-subtle);
 }
@@ -1672,7 +1671,7 @@ svg[data-lucide="loader-circle"] {
   place-items: center;
   border-radius: 9px;
   background-color: var(--color-primary-bg);
-  border-style: var(--tw-border-style);
+  border-style: solid;
   border-width: 1px;
   border-color: var(--color-primary-border);
   color: var(--color-primary-fg);
@@ -1731,7 +1730,7 @@ svg[data-lucide="loader-circle"] {
   gap: 0.375rem;
   padding: 0.375rem 0.25rem;
   border: 0;
-  border-radius: var(--border-radius-md, 8px);
+  border-radius: var(8px);
   color: var(--text-secondary);
   background: transparent;
   cursor: pointer;
@@ -1902,7 +1901,7 @@ svg[data-lucide="loader-circle"] {
   color: var(--text-secondary);
   background: transparent;
   border: none;
-  border-radius: var(--border-radius-md, 8px);
+  border-radius: var(8px);
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
   text-align: left;
@@ -1911,7 +1910,6 @@ svg[data-lucide="loader-circle"] {
 }
 .modal-tab:hover {
   color: var(--text-primary);
-  background: var(--color-background-secondary);
 }
 .modal-tab.active {
   color: var(--color-accent-hover);
@@ -2108,7 +2106,7 @@ body.modal-active {
   background: var(--color-danger-hover-bg);
 }
 .border-bottom {
-  border-bottom-style: var(--tw-border-style);
+  border-bottom-style: solid;
   border-bottom-width: 1px;
   border-color: color-mix(in srgb, rgba(59,130,246,0.25) 80%, transparent);
 }
@@ -2830,7 +2828,7 @@ th[scope="row"]::after, .format-support::after {
   top: 0;
   left: 0;
   height: 100%;
-  width: 0%;
+  width: 0;
   background: var(--color-accent);
   border-radius: 2px;
   transition: width 0.1s linear;
@@ -3062,7 +3060,7 @@ th[scope="row"]::after, .format-support::after {
   box-shadow: 0 12px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
   border-radius: 8px;
   pointer-events: none;
-  will-change: top;
+  will-change: transform;
 }
 .editor-drag-placeholder {
   background: rgba(59,130,246,0.07);
