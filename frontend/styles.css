@@ -642,7 +642,7 @@ svg[data-lucide="loader-circle"] {
 	gap: 0.375rem;
 	padding: 0.375rem 0.25rem;
 	border: 0;
-	border-radius: var(8px);
+	border-radius: 8px;
 	color: var(--text-secondary);
 	background: transparent;
 	cursor: pointer;
@@ -828,7 +828,7 @@ svg[data-lucide="loader-circle"] {
 	color: var(--text-secondary);
 	background: transparent;
 	border: none;
-	border-radius: var(8px);
+	border-radius: 8px;
 	cursor: pointer;
 	transition: color 0.15s, background 0.15s;
 	text-align: left;
