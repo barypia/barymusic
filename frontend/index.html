@@ -85,38 +85,6 @@
 									</div>
 									<input type="text" id="songTitle" required data-i18n="songs.title_placeholder">
 								</div>
-								<div class="list-item">
-									<div class="list-item__text">
-										<label for="songYear" class="list-item__title" data-i18n="songs.year_label"></label>
-									</div>
-									<input type="number" id="songYear" data-i18n="songs.year_placeholder">
-								</div>
-								<div class="list-item">
-									<div class="list-item__text">
-										<label for="songComposer" class="list-item__title" data-i18n="songs.composer_label"></label>
-									</div>
-									<input type="text" id="songComposer" data-i18n="songs.composer_placeholder">
-								</div>
-							</div>
-							<div class="list-group">
-								<div class="list-item">
-									<div class="list-item__text">
-										<label for="songKey" class="list-item__title" data-i18n="songs.key_label"></label>
-									</div>
-									<input type="text" id="songKey" data-i18n="songs.key_placeholder">
-								</div>
-								<div class="list-item">
-									<div class="list-item__text">
-										<label for="songTimeSignature" class="list-item__title" data-i18n="songs.time_signature_label"></label>
-									</div>
-									<input type="text" id="songTimeSignature" data-i18n="songs.time_signature_placeholder">
-								</div>
-								<div class="list-item">
-									<div class="list-item__text">
-										<label for="songBpm" class="list-item__title" data-i18n="songs.bpm_label"></label>
-									</div>			
-									<input type="number" id="songBpm" data-i18n="songs.bpm_placeholder">
-								</div>
 							</div>
 							<div class="list-group">
 								<div class="list-item">
@@ -128,6 +96,8 @@
 									</div>
 								</div>
 							</div>
+
+							<div id="songMetadataSections" class="flex flex-col gap-2"></div>
 
 							<div class="list-group">
 								<div class="list-item">
@@ -234,6 +204,26 @@
 					<button type="submit" form="songForm" class="btn primary" id="songSubmitBtn">
 						<p data-i18n="common.save" data-button-loading-label></p>
 						<i data-lucide="loader-circle"></i>
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div id="songMetadataModal" class="modal" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h1 class="text-xl modal-title" data-i18n="songs.metadata.modal_title"></h1>
+					<button type="button" class="btn-close" data-modal-dismiss data-i18n-aria-label="common.close" data-i18n-title="common.close"><i data-lucide="x"></i></button>
+				</div>
+				<div class="modal-body">
+					<div id="songMetadataBody" class="flex flex-col gap-2"></div>
+				</div>
+				<div class="modal-footer flex-row!">
+					<button type="button" class="btn secondary" data-modal-dismiss data-i18n="common.close"></button>
+					<button type="button" class="btn primary hidden" id="songMetadataEditBtn" onclick="editSongFromMetadataModal()">
+						<i data-lucide="pencil"></i><span data-i18n="songs.edit"></span>
 					</button>
 				</div>
 			</div>
@@ -885,12 +875,12 @@
 												<th scope="col">ChordPro</th>
 											</tr>
 										</thead>
-										<tbody>
-											<tr><th scope="row" data-i18n="transfer.comparison_song_metadata"></th>
-												<td data-state="yes"><span data-i18n="transfer.comparison_yes"></span></td>
-												<td data-state="yes"><span data-i18n="transfer.comparison_yes"></span></td>
-												<td data-state="yes"><span data-i18n="transfer.comparison_yes"></span></td>
-											</tr>
+          <tbody>
+                                            <tr><th scope="row" data-i18n="transfer.comparison_metadata"></th>
+                                                <td data-state="yes"><span data-i18n="transfer.comparison_yes"></span></td>
+                                                <td data-state="yes"><span class="format-support" tabindex="0" data-i18n="transfer.comparison_partial" data-i18n-tooltip="transfer.comparison_metadata_tip_openlyrics"></span></td>
+                                                <td data-state="yes"><span class="format-support" tabindex="0" data-i18n="transfer.comparison_partial" data-i18n-tooltip="transfer.comparison_metadata_tip_chordpro"></span></td>
+                                            </tr>
 											<tr><th scope="row" data-i18n="transfer.comparison_app_metadata"></th>
 												<td data-state="yes"><span data-i18n="transfer.comparison_yes"></span></td>
 												<td data-state="no"><span class="format-support" tabindex="0" data-i18n="transfer.comparison_no" data-i18n-tooltip="transfer.comparison_app_metadata_tip"></span></td>

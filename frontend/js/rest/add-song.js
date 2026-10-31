@@ -161,6 +161,12 @@ async function importLyricsFromMusicXml(prefix) {
 function collectSongFormData(prefix) {
 	function val(suffix) { return document.getElementById(prefix + suffix).value.trim(); }
 
+	const metadataError = validateMetadataForm();
+	if (metadataError) {
+		showToast('error', i18n.t('common.error'), metadataError);
+		return null;
+	}
+
 	const tags = tagEditorGetTags(prefix + 'TagEditor');
 	const lyrics = collectEditorData(prefix + 'LyricsEditor');
 	if (lyrics === undefined) return null;
@@ -169,14 +175,14 @@ function collectSongFormData(prefix) {
 		? isPublicToggle.getAttribute('aria-checked') === 'true'
 		: false;
 	
+	const metadata = collectMetadata();
 	return {
 		title: val('Title'),
 		tags,
-		bpm: parseInt(val('Bpm')) || null,
-		key: val('Key') || null,
-		timeSignature: val('TimeSignature') || null,
-		composer: val('Composer') || null,
-		year: parseInt(val('Year')) || null,
+		bpm: metadata.bpm,
+		key: metadata.key,
+		timeSignature: metadata.timeSignature,
+		metadata,
 		lyrics: lyrics ?? EMPTY_LYRICS,
 		isPublic: isPublic,
 	};
@@ -319,6 +325,7 @@ function openAddSongModal() {
 	document.getElementById('songEditId').value = '';
 	document.getElementById('songForm').reset();
 	tagEditorClear('songTagEditor');
+	fillMetadataForm();
 	clearEditor('songLyricsEditor');
 	loadEditorData('songLyricsEditor', null, null);
 	setEditorMediaContext('songLyricsEditor', false, false);
@@ -349,16 +356,14 @@ function editSong(song = currentSong) {
 	document.querySelector('#songSubmitBtn [data-button-loading-label]').textContent = i18n.t('common.save');
 	document.getElementById('songEditId').value = song.id;
 
-	const fields = {
-		Title: song.title,
-		Bpm: song.bpm, Key: song.key, TimeSignature: song.timeSignature,
-		Year: song.year, Composer: song.composer,
-	};
-	for (const [suffix, value] of Object.entries(fields)) {
-		document.getElementById('song' + suffix).value = value ?? '';
-	}
+	document.getElementById('songTitle').value = song.title ?? '';
 	const tags = Array.isArray(song.tags) ? song.tags : (song.tags ? String(song.tags).split(',').map(t => t.trim()).filter(Boolean) : []);
 	tagEditorSetTags('songTagEditor', tags);
+	const metadata = { ...getSongMetadata(song) };
+	metadata.bpm = song.bpm ?? null;
+	metadata.key = song.key ?? null;
+	metadata.timeSignature = song.timeSignature ?? null;
+	fillMetadataForm(metadata);
 
 	const hasAudio  = song.files?.audio ?? false;
 	const hasSheets = song.files?.sheets ?? false;

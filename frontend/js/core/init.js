@@ -133,6 +133,7 @@ async function loadApplicationScripts() {
         'js/rest/auth.js',
         'js/rest/lyrics-editor.js',
         'js/rest/musicxml-parser.js',
+        'js/song/metadata.js',
         'js/rest/add-song.js',
         'js/rest/transfer.js',
         'js/core/navigation.js',

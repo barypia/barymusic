@@ -72,6 +72,7 @@ try {
     Copy-Item -Path (Join-Path $unpackedNode.FullName '*') -Destination $runtimeDir -Recurse -Force
 
     Copy-Item -LiteralPath (Join-Path $repoRoot 'server\barymusic.js') -Destination $serverDir
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'server\song-metadata.js') -Destination $serverDir
     Copy-Item -LiteralPath (Join-Path $repoRoot 'server\package.json') -Destination $serverDir
     Copy-Item -LiteralPath (Join-Path $repoRoot 'server\package-lock.json') -Destination $serverDir
     Copy-DirectoryWithoutNodeModules -Source (Join-Path $repoRoot 'frontend') -Destination (Join-Path $appDir 'frontend')

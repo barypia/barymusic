@@ -19,6 +19,101 @@ function _downloadTransferResponse(response, fallbackName) {
 
 let _transferSelectedSongIds = new Set();
 let _transferSelectedSetlistIds = new Set();
+const _formatComparisonTooltipSelector = '.format-support[data-tooltip], th[scope="row"][data-tooltip]';
+let _formatComparisonTooltip = null;
+let _formatComparisonTooltipTarget = null;
+let _formatComparisonTooltipPreviousDescription = null;
+
+function _getFormatComparisonTooltip() {
+	if (_formatComparisonTooltip) return _formatComparisonTooltip;
+
+	_formatComparisonTooltip = document.createElement('div');
+	_formatComparisonTooltip.className = 'format-comparison-tooltip';
+	_formatComparisonTooltip.id = 'formatComparisonTooltip';
+	_formatComparisonTooltip.setAttribute('role', 'tooltip');
+	document.body.appendChild(_formatComparisonTooltip);
+	return _formatComparisonTooltip;
+}
+
+function _positionFormatComparisonTooltip(target) {
+	const tooltip = _getFormatComparisonTooltip();
+	const targetRect = target.getBoundingClientRect();
+	const tooltipRect = tooltip.getBoundingClientRect();
+	const margin = 12;
+	const gap = 8;
+	const maxLeft = Math.max(margin, window.innerWidth - tooltipRect.width - margin);
+	const left = Math.min(maxLeft, Math.max(margin, targetRect.left + targetRect.width / 2 - tooltipRect.width / 2));
+	const spaceAbove = targetRect.top - margin - gap;
+	const spaceBelow = window.innerHeight - targetRect.bottom - margin - gap;
+	const placeAbove = spaceAbove >= tooltipRect.height || spaceAbove >= spaceBelow;
+	const top = placeAbove
+		? Math.max(margin, targetRect.top - tooltipRect.height - gap)
+		: Math.min(window.innerHeight - tooltipRect.height - margin, targetRect.bottom + gap);
+
+	tooltip.style.left = `${left}px`;
+	tooltip.style.top = `${top}px`;
+}
+
+function _showFormatComparisonTooltip(target) {
+	const text = target.dataset.tooltip?.trim();
+	if (!text) return;
+
+	const tooltip = _getFormatComparisonTooltip();
+	if (_formatComparisonTooltipTarget !== target) {
+		_hideFormatComparisonTooltip();
+		_formatComparisonTooltipTarget = target;
+		_formatComparisonTooltipPreviousDescription = target.getAttribute('aria-describedby');
+	}
+	tooltip.textContent = text;
+	target.setAttribute('aria-describedby', tooltip.id);
+	_positionFormatComparisonTooltip(target);
+	tooltip.classList.add('is-visible');
+}
+
+function _hideFormatComparisonTooltip() {
+	if (!_formatComparisonTooltipTarget) return;
+
+	if (_formatComparisonTooltipPreviousDescription) {
+		_formatComparisonTooltipTarget.setAttribute('aria-describedby', _formatComparisonTooltipPreviousDescription);
+	} else {
+		_formatComparisonTooltipTarget.removeAttribute('aria-describedby');
+	}
+	_formatComparisonTooltip?.classList.remove('is-visible');
+	_formatComparisonTooltipTarget = null;
+	_formatComparisonTooltipPreviousDescription = null;
+}
+
+document.querySelectorAll(_formatComparisonTooltipSelector).forEach(target => {
+	if (target.matches('.format-support') && !target.hasAttribute('tabindex')) target.tabIndex = 0;
+	target.addEventListener('pointerenter', () => _showFormatComparisonTooltip(target));
+	target.addEventListener('pointerleave', () => {
+		if (_formatComparisonTooltipTarget !== target || document.activeElement === target) return;
+		_hideFormatComparisonTooltip();
+	});
+	target.addEventListener('focus', () => _showFormatComparisonTooltip(target));
+	target.addEventListener('blur', () => {
+		if (_formatComparisonTooltipTarget !== target || target.matches(':hover')) return;
+		_hideFormatComparisonTooltip();
+	});
+});
+
+document.addEventListener('click', event => {
+	const clickTarget = event.target instanceof Element ? event.target : null;
+	if (_formatComparisonTooltipTarget && !clickTarget?.closest(_formatComparisonTooltipSelector)) {
+		_hideFormatComparisonTooltip();
+	}
+});
+document.addEventListener('scroll', _hideFormatComparisonTooltip, true);
+window.addEventListener('resize', _hideFormatComparisonTooltip);
+
+const _settingsModal = document.getElementById('settingsModal');
+if (_settingsModal) {
+	new MutationObserver(() => {
+		if (_formatComparisonTooltipTarget && !_formatComparisonTooltipTarget.getClientRects().length) {
+			_hideFormatComparisonTooltip();
+		}
+	}).observe(_settingsModal, { attributes: true, attributeFilter: ['class'], subtree: true });
+}
 
 async function initializeTransferSettings() {
 	const importButton = document.getElementById('libraryImportTransferBtn');

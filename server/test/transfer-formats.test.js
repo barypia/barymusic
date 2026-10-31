@@ -4,6 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
+const vm = require('vm');
 const { PassThrough } = require('stream');
 const { ZipArchive } = require('archiver');
 const sharp = require('sharp');
@@ -16,6 +17,8 @@ const {
   closeDatabase,
   convertUploadedSheet,
   importLibrary,
+  migrateDatabase,
+  normalizeLegacySongMetadata,
   normalizeSong,
   openBaryMusic,
   parseExternalZip,
@@ -27,6 +30,7 @@ const {
   songFromOpenLyrics,
   songToChordPro,
   songToOpenLyrics,
+  songComposerFromMetadata,
   streamTextExport,
   validateBackupManifest,
 } = require('../barymusic');
@@ -91,16 +95,28 @@ test('canonical BaryMusic song preserves all lyrics v2 fields', () => {
 
 test('OpenLyrics round-trip preserves supported metadata, order, sections, and chords', () => {
   const xml = songToOpenLyrics(song);
-  assert.match(xml, /version="0\.8"/);
+  assert.match(xml, /version="0\.9"/);
   assert.match(xml, /<chord name="C"\/>First line/);
   assert.doesNotMatch(xml, /<chord root=/);
   const imported = songFromOpenLyrics(xml);
   assert.equal(imported.song.title, song.title);
-  assert.equal(imported.song.composer, song.composer);
+  assert.deepEqual(imported.song.metadata.authors, [{ name: 'Composer', type: 'music' }]);
+  assert.equal(imported.song.year, song.year);
   assert.equal(imported.song.bpm, song.bpm);
   assert.equal(imported.song.lyrics.sections.v1.lines[0], '[C]First line');
   assert.deepEqual(imported.song.lyrics.order.map(entry => entry.id), ['v1', 'v1', 'c1', 'c1']);
   assert.ok(imported.warnings.length);
+});
+
+test('OpenLyrics round-trip preserves out-of-range BPM values and comma-containing tags', () => {
+  for (const bpm of [20, 251]) {
+    const source = { ...song, bpm, tags: ['rock, pop'] };
+    const xml = songToOpenLyrics(source);
+    const imported = songFromOpenLyrics(xml).song;
+    assert.equal(imported.bpm, bpm);
+    assert.deepEqual(imported.tags, source.tags);
+    assert.doesNotMatch(xml, /<keywords>/);
+  }
 });
 
 test('OpenLyrics uses chord spelling recognized by OpenLP', () => {
@@ -151,6 +167,289 @@ test('ChordPro round-trip preserves supported metadata, sections, and inline cho
   assert.ok(imported.warnings.length);
 });
 
+const richMetadata = {
+  lang: 'pl',
+  titles: [{ text: 'Alternative title', lang: 'en', original: true }],
+  sortTitle: 'Example, The',
+  authors: [
+    { name: 'Music Author', type: 'music' },
+    { name: 'Words Author', type: 'words' },
+    { name: 'Translator', type: 'translation', lang: 'en' },
+    { name: 'Arranger', type: 'arranger' },
+    { name: 'Artist', type: 'artist' },
+  ],
+  copyright: '2025 Publisher',
+  ccliNo: '22025',
+  released: '2025-05-01',
+  album: 'Album',
+  publisher: 'Publisher',
+  variant: 'Live',
+  customVersion: '1.2',
+  songbooks: [{ name: 'Songbook', entry: '48' }],
+  comments: ['First comment', 'Second comment'],
+  transposition: -3,
+  capo: 2,
+  duration: '3:45',
+  tempoText: 'Moderate',
+};
+
+test('native song normalization keeps every metadata field and is idempotent', () => {
+  const normalized = normalizeSong({ ...song, tags: ['worship', 'test'], metadata: { ...richMetadata, keywords: ['grace', 'praise'] } });
+  const expectedMetadata = {
+    ...richMetadata,
+    authors: [...richMetadata.authors, { name: 'Composer', type: 'music' }],
+  };
+  assert.deepEqual(normalized.metadata, expectedMetadata);
+  assert.deepEqual(normalized.tags, ['worship', 'test', 'grace', 'praise']);
+  assert.equal(normalized.year, 2025);
+  assert.deepEqual(normalizeSong(JSON.parse(JSON.stringify(normalized))), normalized);
+  assert.deepEqual(normalizeSong({ ...song, metadata: JSON.stringify({ ...richMetadata, keywords: ['grace', 'praise'] }) }).metadata, expectedMetadata);
+});
+
+test('metadata is sanitized and legacy composer and year are migrated into it', () => {
+  const dirty = normalizeSong({
+    title: 'Dirty',
+    metadata: {
+      ccliNo: 'abc', transposition: 99, capo: 99, duration: 'soon', released: 'yesterday', lang: 'not a lang',
+      authors: [{ name: 'Valid', type: 'unknown' }, { name: '   ' }, { name: { nested: true } }],
+      keywords: 'one, two, one,  ',
+      comments: Array.from({ length: 80 }, (_, index) => `Comment ${index}\nsecond line`),
+    },
+  });
+  assert.equal(dirty.metadata.ccliNo, null);
+  assert.equal(dirty.metadata.transposition, null);
+  assert.equal(dirty.metadata.capo, null);
+  assert.equal(dirty.metadata.duration, null);
+  assert.equal(dirty.metadata.released, null);
+  assert.equal(dirty.metadata.lang, null);
+  assert.equal(dirty.year, null);
+  assert.deepEqual(dirty.metadata.authors, [{ name: 'Valid', type: 'music' }]);
+  assert.deepEqual(dirty.tags, ['one', 'two']);
+  assert.equal('keywords' in dirty.metadata, false);
+  assert.equal(dirty.metadata.comments.length, 50);
+  assert.equal(dirty.metadata.comments[0], 'Comment 0 second line');
+
+  const legacy = normalizeSong({ title: 'Legacy', composer: 'Old Composer', year: 1999 });
+  assert.deepEqual(legacy.metadata.authors, [{ name: 'Old Composer', type: 'music' }]);
+  assert.equal(legacy.metadata.released, '1999');
+  assert.equal(legacy.year, 1999);
+});
+
+test('legacy metadata preserves composer alongside existing authors and short years', () => {
+  const legacy = normalizeSong({
+    title: 'Legacy metadata',
+    composer: 'Composer',
+    year: 99,
+    metadata: { authors: [{ name: 'Lyricist', type: 'words' }] },
+  });
+  assert.deepEqual(legacy.metadata.authors, [
+    { name: 'Lyricist', type: 'words' },
+    { name: 'Composer', type: 'music' },
+  ]);
+  assert.equal(legacy.metadata.released, '99');
+  assert.equal(legacy.year, 99);
+
+  const fullAuthorList = normalizeSong({
+    composer: 'Composer',
+    metadata: { authors: Array.from({ length: 50 }, (_, index) => ({ name: `Author ${index}`, type: 'words' })) },
+  }).metadata.authors;
+  assert.equal(fullAuthorList.length, 51);
+  assert.deepEqual(fullAuthorList.at(-1), { name: 'Composer', type: 'music' });
+});
+
+test('legacy API fields update existing metadata and expose a composer alias', () => {
+  const existing = {
+    authors: [
+      { name: 'Old Composer', type: 'music' },
+      { name: 'Lyricist', type: 'words' },
+    ],
+    released: '1999',
+    copyright: 'Keep this',
+  };
+  const updated = normalizeLegacySongMetadata(undefined, { composer: 'New Composer', year: 99 }, existing);
+  assert.deepEqual(updated.authors, [
+    { name: 'Lyricist', type: 'words' },
+    { name: 'New Composer', type: 'music' },
+  ]);
+  assert.equal(updated.released, '99');
+  assert.equal(updated.copyright, 'Keep this');
+  assert.equal(songComposerFromMetadata(updated), 'New Composer');
+});
+
+test('metadata presence filters read key, meter, and BPM from their song fields', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', '..', 'frontend', 'js', 'song', 'metadata.js'), 'utf8');
+  const context = {
+    window: { addEventListener() {} },
+    document: { getElementById() { return null; } },
+    i18n: { t: key => key },
+  };
+  vm.runInNewContext(`${source}\nglobalThis.metadataFilterTest = matchesMetadataFilters;`, context);
+  const matches = context.metadataFilterTest;
+  const filters = { values: {}, has: ['key', 'timeSignature', 'bpm'], missing: [] };
+  assert.equal(matches({ key: 'C', timeSignature: '4/4', bpm: 120 }, filters), true);
+  assert.equal(matches({ key: null, timeSignature: '4/4', bpm: 120 }, filters), false);
+});
+
+test('metadata form validation rejects invalid row languages and excess rows', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', '..', 'frontend', 'js', 'song', 'metadata.js'), 'utf8');
+  const elements = new Map();
+  const context = {
+    window: { addEventListener() {} },
+    document: { getElementById: id => elements.get(id) || { value: '', querySelectorAll: () => [] } },
+    i18n: { t: key => key },
+  };
+  vm.runInNewContext(`${source}\nglobalThis.validateMetadataTest = validateMetadataForm;`, context);
+  const validate = context.validateMetadataTest;
+  const authorContainer = { querySelectorAll: () => [{ querySelector: selector => ({ value: selector.includes('lang') ? 'polski' : '' }) }] };
+  elements.set('songMeta_authors', authorContainer);
+  assert.ok(validate());
+
+  elements.set('songMeta_authors', { querySelectorAll: () => Array.from({ length: 52 }, () => ({})) });
+  assert.ok(validate());
+});
+
+test('OpenLyrics round-trip preserves every metadata field the format supports', () => {
+  const xml = songToOpenLyrics({ ...song, metadata: { ...richMetadata, keywords: ['grace', 'praise'] } });
+  assert.match(xml, /xml:lang="pl"/);
+  assert.match(xml, /<author type="arrangement">Arranger<\/author>/);
+  assert.match(xml, /<theme>worship<\/theme>/);
+  assert.match(xml, /<theme>grace<\/theme>/);
+  assert.doesNotMatch(xml, /<keywords>/);
+  assert.doesNotMatch(xml, /Artist/);
+  const importedSong = songFromOpenLyrics(xml).song;
+  const { metadata } = importedSong;
+  const expected = {
+    ...richMetadata,
+    authors: [...richMetadata.authors.filter(author => author.type !== 'artist'), { name: 'Composer', type: 'music' }],
+  };
+  for (const field of ['capo', 'duration', 'album', 'sortTitle', 'tempoText']) delete expected[field];
+  for (const [field, value] of Object.entries(expected)) assert.deepEqual(metadata[field], value, field);
+  assert.deepEqual(importedSong.tags, ['worship', 'test', 'grace', 'praise']);
+  assert.equal('keywords' in metadata, false);
+  assert.equal(metadata.capo, null);
+  assert.equal(metadata.album, null);
+});
+
+test('OpenLyrics import reads metadata written by other applications', () => {
+  const xml = `<?xml version="1.0"?>
+<song xmlns="http://openlyrics.info/namespace/2009/song" version="0.8" xml:lang="de">
+  <properties>
+    <titles><title lang="de">Hauptlied</title><title lang="he" translit="en">Shalom</title></titles>
+    <authors><author type="translator" lang="cs">Jan</author><author>Somebody</author></authors>
+    <released>1779-12-31T13:15</released>
+    <tempo type="text">Moderate</tempo>
+    <customVersion>ignored</customVersion>
+    <version>0.99</version>
+    <keywords>one, two</keywords>
+    <songbooks><songbook name="Book" entry="7"/><songbook name="Other"/></songbooks>
+    <themes><theme lang="en">Grace</theme></themes>
+    <comments><comment>Note</comment></comments>
+  </properties>
+  <lyrics><verse name="v1"><lines>Text</lines></verse></lyrics>
+</song>`;
+  const { song: imported } = songFromOpenLyrics(xml);
+  assert.equal(imported.title, 'Hauptlied');
+  assert.equal(imported.bpm, null);
+  assert.equal(imported.year, 1779);
+  assert.deepEqual(imported.tags, ['Grace', 'one', 'two']);
+  assert.equal(imported.metadata.lang, 'de');
+  assert.equal(imported.metadata.released, '1779-12-31');
+  assert.equal(imported.metadata.tempoText, 'Moderate');
+  assert.equal(imported.metadata.customVersion, '0.99');
+  assert.deepEqual(imported.metadata.titles, [{ text: 'Shalom', lang: 'he', translit: 'en' }]);
+  assert.deepEqual(imported.metadata.authors, [{ name: 'Jan', type: 'translation', lang: 'cs' }, { name: 'Somebody', type: 'music' }]);
+  assert.deepEqual(imported.metadata.songbooks, [{ name: 'Book', entry: '7' }, { name: 'Other' }]);
+  assert.equal('keywords' in imported.metadata, false);
+  assert.deepEqual(imported.metadata.comments, ['Note']);
+});
+
+test('ChordPro round-trip preserves every metadata field the format supports', () => {
+  const chordPro = songToChordPro({ ...song, metadata: richMetadata });
+  for (const directive of ['sorttitle', 'subtitle', 'artist', 'composer', 'lyricist', 'arranger', 'copyright', 'album', 'year', 'duration', 'capo']) {
+    assert.match(chordPro, new RegExp(`\\{${directive}: `), directive);
+  }
+  assert.doesNotMatch(chordPro, /Translator/);
+  const { song: imported, warnings } = songFromChordPro(chordPro);
+  const { metadata } = imported;
+  assert.equal(metadata.sortTitle, richMetadata.sortTitle);
+  assert.deepEqual(metadata.titles, [{ text: 'Alternative title' }]);
+  assert.deepEqual(metadata.authors.map(author => [author.name, author.type]).sort(), [
+    ['Arranger', 'arranger'], ['Artist', 'artist'], ['Composer', 'music'], ['Music Author', 'music'], ['Words Author', 'words'],
+  ]);
+  assert.equal(metadata.copyright, richMetadata.copyright);
+  assert.equal(metadata.album, richMetadata.album);
+  assert.equal(metadata.duration, richMetadata.duration);
+  assert.equal(metadata.capo, richMetadata.capo);
+  assert.equal(imported.year, 2025);
+  assert.equal(imported.bpm, 120);
+  assert.deepEqual(imported.tags, song.tags);
+  assert.ok(!warnings.some(warning => warning.code === 'chordpro_directive'));
+});
+
+test('ChordPro import accepts short directive names and textual tempo', () => {
+  const { song: imported } = songFromChordPro('{t: Short}\n{st: Sub}\n{tempo: Allegro}\n{lyricist: A}\n{lyricist: B}\n\n[C]Line');
+  assert.equal(imported.title, 'Short');
+  assert.equal(imported.bpm, null);
+  assert.equal(imported.metadata.tempoText, 'Allegro');
+  assert.deepEqual(imported.metadata.titles, [{ text: 'Sub' }]);
+  assert.deepEqual(imported.metadata.authors, [{ name: 'A', type: 'words' }, { name: 'B', type: 'words' }]);
+});
+
+test('database migration moves composer and year into metadata exactly once', async () => {
+  const db = new sqlite3.Database(':memory:');
+  const exec = sql => new Promise((resolve, reject) => db.exec(sql, error => error ? reject(error) : resolve()));
+  const all = sql => new Promise((resolve, reject) => db.all(sql, (error, rows) => error ? reject(error) : resolve(rows)));
+  const close = () => new Promise((resolve, reject) => db.close(error => error ? reject(error) : resolve()));
+  await exec(`
+    CREATE TABLE songs (id INTEGER PRIMARY KEY, title TEXT, type TEXT, bpm INTEGER, key TEXT, timeSignature TEXT, composer TEXT, year INTEGER, metadata TEXT, lyrics TEXT);
+    INSERT INTO songs (id, title, composer, year) VALUES (1, 'Full', 'Composer', 1999), (2, 'Empty', NULL, NULL), (3, 'Year only', '', 2001);
+    INSERT INTO songs (id, title, composer, year, metadata) VALUES (4, 'Authors already present', 'Composer', 99, '{"authors":[{"name":"Lyricist","type":"words"}]}');
+    PRAGMA user_version = 1;
+  `);
+  try {
+    await migrateDatabase(db);
+    await migrateDatabase(db);
+    const rows = await all('SELECT * FROM songs ORDER BY id');
+    assert.ok(rows.every(row => !('composer' in row)));
+    assert.deepEqual(rows.map(row => row.year), [1999, null, 2001, 99]);
+    assert.deepEqual(JSON.parse(rows[0].metadata), { authors: [{ name: 'Composer', type: 'music' }], released: '1999' });
+    assert.equal(rows[1].metadata, null);
+    assert.deepEqual(JSON.parse(rows[2].metadata), { released: '2001' });
+    assert.deepEqual(JSON.parse(rows[3].metadata), {
+      authors: [{ name: 'Lyricist', type: 'words' }, { name: 'Composer', type: 'music' }],
+      released: '99',
+    });
+    assert.equal((await all('PRAGMA user_version'))[0].user_version, 2);
+  } finally {
+    await close();
+  }
+});
+
+test('database migration to schema 2 merges legacy keywords into tags and preserves metadata', async () => {
+  const db = new sqlite3.Database(':memory:');
+  const exec = sql => new Promise((resolve, reject) => db.exec(sql, error => error ? reject(error) : resolve()));
+  const all = sql => new Promise((resolve, reject) => db.all(sql, (error, rows) => error ? reject(error) : resolve(rows)));
+  const close = () => new Promise((resolve, reject) => db.close(error => error ? reject(error) : resolve()));
+  await exec(`
+    CREATE TABLE songs (id INTEGER PRIMARY KEY, title TEXT, type TEXT, metadata TEXT);
+    INSERT INTO songs VALUES (1, 'Tagged', '["Grace","praise"]', '{"keywords":["grace","Hope"],"copyright":"Public domain"}');
+    INSERT INTO songs VALUES (2, 'Keyword only', NULL, '{"keywords":"one, two"}');
+    PRAGMA user_version = 1;
+  `);
+  try {
+    await migrateDatabase(db);
+    await migrateDatabase(db);
+    const rows = await all('SELECT * FROM songs ORDER BY id');
+    assert.deepEqual(JSON.parse(rows[0].type), ['Grace', 'praise', 'Hope']);
+    assert.deepEqual(JSON.parse(rows[0].metadata), { copyright: 'Public domain' });
+    assert.deepEqual(JSON.parse(rows[1].type), ['one', 'two']);
+    assert.equal(rows[1].metadata, null);
+    assert.equal((await all('PRAGMA user_version'))[0].user_version, 2);
+  } finally {
+    await close();
+  }
+});
+
 test('ChordPro ZIP imports a referenced sheet image', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'barymusic-chordpro-'));
   const file = path.join(dir, 'songs.zip');
@@ -175,7 +474,7 @@ test('ChordPro ZIP imports a referenced sheet image', async () => {
   const get = sql => new Promise((resolve, reject) => db.get(sql, (error, row) => error ? reject(error) : resolve(row)));
   const close = () => new Promise((resolve, reject) => db.close(error => error ? reject(error) : resolve()));
   await exec(`
-    CREATE TABLE songs (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, type TEXT, bpm INTEGER, key TEXT, timeSignature TEXT, composer TEXT, year INTEGER, lyrics TEXT, filesAudio INTEGER DEFAULT 0, filesSheets TEXT, uploadedBy INTEGER, isPublic INTEGER, createdAt INTEGER);
+    CREATE TABLE songs (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, type TEXT, bpm INTEGER, key TEXT, timeSignature TEXT, year INTEGER, metadata TEXT, lyrics TEXT, filesAudio INTEGER DEFAULT 0, filesSheets TEXT, uploadedBy INTEGER, isPublic INTEGER, createdAt INTEGER);
     CREATE TABLE setlists (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, items TEXT, uploadedBy INTEGER, isPublic INTEGER, createdAt INTEGER);
   `);
   try {
@@ -225,7 +524,7 @@ test('multiple ChordPro ZIP archives keep their own sheet files', async () => {
   const all = sql => new Promise((resolve, reject) => db.all(sql, (error, rows) => error ? reject(error) : resolve(rows)));
   const close = () => new Promise((resolve, reject) => db.close(error => error ? reject(error) : resolve()));
   await exec(`
-    CREATE TABLE songs (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, type TEXT, bpm INTEGER, key TEXT, timeSignature TEXT, composer TEXT, year INTEGER, lyrics TEXT, filesAudio INTEGER DEFAULT 0, filesSheets TEXT, uploadedBy INTEGER, isPublic INTEGER, createdAt INTEGER);
+    CREATE TABLE songs (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, type TEXT, bpm INTEGER, key TEXT, timeSignature TEXT, year INTEGER, metadata TEXT, lyrics TEXT, filesAudio INTEGER DEFAULT 0, filesSheets TEXT, uploadedBy INTEGER, isPublic INTEGER, createdAt INTEGER);
     CREATE TABLE setlists (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, items TEXT, uploadedBy INTEGER, isPublic INTEGER, createdAt INTEGER);
   `);
   try {
@@ -254,7 +553,6 @@ test('ChordPro export bundles a portable PNG next to the song', async () => {
     bpm: song.bpm,
     key: song.key,
     timeSignature: song.timeSignature,
-    composer: song.composer,
     year: song.year,
     lyrics: JSON.stringify(song.lyrics),
     isPublic: 1,
@@ -334,7 +632,7 @@ test('BaryMusic archive validates media checksum', async () => {
   const buffer = Buffer.from('media bytes');
   const mediaPath = 'media/audio/1.mp3';
   const manifest = {
-    format: 'BaryMusic', schemaVersion: 2, kind: 'library', payload: { songs: [{ ...song, archiveId: '1', media: { audio: mediaPath } }], setlists: [] },
+    format: 'BaryMusic', schemaVersion: 3, kind: 'library', payload: { songs: [{ ...song, archiveId: '1', media: { audio: mediaPath } }], setlists: [] },
     files: [{ path: mediaPath, size: buffer.length, sha256: crypto.createHash('sha256').update(buffer).digest('hex') }],
   };
   try {
@@ -409,13 +707,19 @@ test('library import always creates new IDs and remaps setlists', async () => {
   const notesDir = path.join(mediaDir, 'notes');
   fs.mkdirSync(audioDir); fs.mkdirSync(notesDir);
   await exec(`
-    CREATE TABLE songs (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, type TEXT, bpm INTEGER, key TEXT, timeSignature TEXT, composer TEXT, year INTEGER, lyrics TEXT, filesAudio INTEGER DEFAULT 0, filesSheets TEXT, uploadedBy INTEGER, isPublic INTEGER, createdAt INTEGER);
+    CREATE TABLE songs (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, type TEXT, bpm INTEGER, key TEXT, timeSignature TEXT, year INTEGER, metadata TEXT, lyrics TEXT, filesAudio INTEGER DEFAULT 0, filesSheets TEXT, uploadedBy INTEGER, isPublic INTEGER, createdAt INTEGER);
     CREATE TABLE setlists (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, items TEXT, uploadedBy INTEGER, isPublic INTEGER, createdAt INTEGER);
   `);
   const media = Buffer.from('round-trip audio');
   const mediaPath = 'media/audio/source-song.mp3';
   const archivePath = path.join(mediaDir, 'library.barymusic');
-  const transferSong = { ...song, archiveId: 'source-song', media: { audio: mediaPath } };
+  const transferSong = {
+    ...song,
+    tags: ['Worship', 'test'],
+    metadata: { copyright: 'Public domain', keywords: ['worship', 'Hope'] },
+    archiveId: 'source-song',
+    media: { audio: mediaPath },
+  };
   const archiveManifest = {
     format: 'BaryMusic', schemaVersion: 2, kind: 'library',
     payload: { songs: [transferSong], setlists: [] },
@@ -429,9 +733,17 @@ test('library import always creates new IDs and remaps setlists', async () => {
   try {
     await importLibrary(db, payload, 1, archivePath, audioDir, notesDir);
     await importLibrary(db, payload, 1, archivePath, audioDir, notesDir);
-    const songs = await all('SELECT id FROM songs ORDER BY id');
+    const songs = await all('SELECT id, type, metadata FROM songs ORDER BY id');
     const setlists = await all('SELECT items FROM setlists ORDER BY id');
     assert.deepEqual(songs.map(row => row.id), [1, 2]);
+    for (const row of songs) {
+      assert.deepEqual(JSON.parse(row.type), ['Worship', 'test', 'Hope']);
+      assert.deepEqual(JSON.parse(row.metadata), {
+        authors: [{ name: 'Composer', type: 'music' }],
+        copyright: 'Public domain',
+        released: '2025',
+      });
+    }
     assert.equal(JSON.parse(setlists[0].items)[0].items[0].songId, 1);
     assert.equal(JSON.parse(setlists[1].items)[0].items[0].songId, 2);
     assert.deepEqual(fs.readFileSync(path.join(audioDir, '1.mp3')), media);
@@ -450,7 +762,7 @@ test('server backup restore preserves IDs and persistent state but clears sessio
   await exec(`
     CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, passwordHash TEXT, canAddSongs INTEGER, isAdmin INTEGER, createdAt INTEGER);
     CREATE TABLE sessions (token TEXT PRIMARY KEY, userId INTEGER, expiresAt INTEGER, createdAt INTEGER);
-    CREATE TABLE songs (id INTEGER PRIMARY KEY, title TEXT, type TEXT, bpm INTEGER, key TEXT, timeSignature TEXT, composer TEXT, year INTEGER, lyrics TEXT, filesAudio INTEGER, filesSheets TEXT, uploadedBy INTEGER, isPublic INTEGER, createdAt INTEGER);
+    CREATE TABLE songs (id INTEGER PRIMARY KEY, title TEXT, type TEXT, bpm INTEGER, key TEXT, timeSignature TEXT, year INTEGER, metadata TEXT, lyrics TEXT, filesAudio INTEGER, filesSheets TEXT, uploadedBy INTEGER, isPublic INTEGER, createdAt INTEGER);
     CREATE TABLE setlists (id INTEGER PRIMARY KEY, title TEXT, description TEXT, items TEXT, uploadedBy INTEGER, isPublic INTEGER, createdAt INTEGER);
     CREATE TABLE user_settings (id INTEGER PRIMARY KEY, userId INTEGER, channelId INTEGER, settings TEXT, createdAt INTEGER, updatedAt INTEGER);
   `);

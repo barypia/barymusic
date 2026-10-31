@@ -17,7 +17,7 @@ ENV NODE_ENV=production \
 WORKDIR /app
 
 COPY --from=dependencies /app/node_modules ./node_modules
-COPY --chown=node:node server/barymusic.js server/package.json ./
+COPY --chown=node:node server/barymusic.js server/song-metadata.js server/package.json ./
 COPY --chown=node:node frontend ./frontend
 
 RUN mkdir -p /var/lib/barymusic/config /var/lib/barymusic/data/audio /var/lib/barymusic/data/notes /var/lib/barymusic/logs \

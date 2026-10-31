@@ -140,11 +140,6 @@ function _openSongItemContextMenu(song, pos) {
 			action: () => isOpened ? cleanupSongState(true) : openSong(song.id)
 		},
 		{
-			icon: 'arrow-left-right',
-			label: i18n.t('transfer.export_tab'),
-			action: () => openTransferSettingsForSong(song.id)
-		},
-		{
 			icon: 'pencil',
 			label: i18n.t('songs.edit'),
 			disabled: !canEdit,
@@ -169,7 +164,6 @@ function openSonglistFilterContextMenu(trigger, onRefresh = null) {
 	const types = [...new Set(songs.flatMap(song => Array.isArray(song.tags) ? song.tags : []).filter(Boolean))].sort();
 	const keys = [...new Set(songs.map(song => song.key).filter(Boolean))].sort();
 	const timeSignatures = [...new Set(songs.map(song => song.timeSignature).filter(Boolean))].sort();
-	const composers = [...new Set(songs.map(song => song.composer).filter(Boolean))].sort();
 	const uploaders = [...new Set(songs.map(song => song.uploadedByUsername).filter(Boolean))].sort();
 	const getBounds = values => {
 		const numbers = values.map(Number).filter(Number.isFinite);
@@ -296,23 +290,26 @@ function openSonglistFilterContextMenu(trigger, onRefresh = null) {
 			}
 		},
 		{ separator: true },
-		{
-			icon: 'user-round',
-			label: i18n.t('songs.filter_composer'),
-			visible: composers.length > 0,
-			submenu: {
-				type: 'multi',
-				value: _songlistActiveComposers,
-				defaultValue: [],
-				searchable: { placeholder: i18n.t('songs.filter_search_options') },
-				items: [
-					{ value: null, label: i18n.t('songs.filter_include_without_composer') },
-					{ separator: true },
-					...composers.map(value => ({ value, label: value }))
-				],
-				onChange: values => { _songlistActiveComposers = values; refresh(); }
-			}
-		},
+		...METADATA_VALUE_FILTERS.map(({ key, icon }) => {
+			const values = uniqueMetadataValues(songs, key);
+			return {
+				icon,
+				label: i18n.t(`songs.metadata.${key}`),
+				visible: values.length > 0,
+				submenu: {
+					type: 'multi',
+					value: _songlistMetadataFilters.values[key] ?? [],
+					defaultValue: [],
+					searchable: { placeholder: i18n.t('songs.filter_search_options') },
+					items: [
+						{ value: null, label: i18n.t('songs.filter_include_without_value') },
+						{ separator: true },
+						...values.map(value => ({ value, label: value }))
+					],
+					onChange: selected => { _songlistMetadataFilters.values[key] = selected; refresh(); }
+				}
+			};
+		}),
 		{
 			icon: 'calendar',
 			label: i18n.t('songs.filter_year'),
@@ -327,6 +324,19 @@ function openSonglistFilterContextMenu(trigger, onRefresh = null) {
 				onChange: value => { _songlistYearRange = value; refresh(); }
 			}
 		},
+		{ separator: true },
+		...[['has', 'check'], ['missing', 'x']].map(([mode, icon]) => ({
+			icon,
+			label: i18n.t(`songs.filter_metadata_${mode}`),
+			submenu: {
+				type: 'multi',
+				value: _songlistMetadataFilters[mode],
+				defaultValue: [],
+				searchable: { placeholder: i18n.t('songs.filter_search_options') },
+				items: METADATA_PRESENCE_FIELDS.map(key => ({ value: key, label: i18n.t(`songs.metadata.${key}`) })),
+				onChange: selected => { _songlistMetadataFilters[mode] = selected; refresh(); }
+			}
+		})),
 		{ separator: true },
 		{
 			icon: 'rotate-ccw',

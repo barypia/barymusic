@@ -10,8 +10,8 @@ let _songlistActiveTimeSignatures = [];
 let _songlistTagsMatch = 'any';
 let _songlistYearRange = { min: null, max: null, includeMissing: false };
 let _songlistBpmRange = { min: null, max: null, includeMissing: false };
-let _songlistActiveComposers = [];
 let _songlistActiveUploaders = [];
+let _songlistMetadataFilters = { values: {}, has: [], missing: [] };
 
 function _matchesSonglistTags(songTags, selectedTags = [], matchMode) {
     if (selectedTags.length === 0) return true;
@@ -49,8 +49,8 @@ function _isSonglistFilterActive() {
         || _songlistActiveTimeSignatures.length > 0
         || _songlistYearRange.min != null || _songlistYearRange.max != null || _songlistYearRange.includeMissing
         || _songlistBpmRange.min != null || _songlistBpmRange.max != null || _songlistBpmRange.includeMissing
-        || _songlistActiveComposers.length > 0
-        || _songlistActiveUploaders.length > 0;
+        || _songlistActiveUploaders.length > 0
+        || isMetadataFilterActive(_songlistMetadataFilters);
 }
 
 function _updateSonglistFilterButton() {
@@ -67,8 +67,8 @@ function _resetSonglistFilters() {
     _songlistActiveTimeSignatures = [];
     _songlistYearRange = { min: null, max: null, includeMissing: false };
     _songlistBpmRange = { min: null, max: null, includeMissing: false };
-    _songlistActiveComposers = [];
     _songlistActiveUploaders = [];
+    _songlistMetadataFilters = { values: {}, has: [], missing: [] };
     _updateSonglistFilterButton();
 }
 
@@ -82,9 +82,9 @@ function _matchesSonglistFilters(song, filters, query) {
         && _matchesSonglistValue(song.timeSignature, filters.timeSignatures)
         && _matchesSonglistRange(song.year, filters.yearRange)
         && _matchesSonglistRange(song.bpm, filters.bpmRange)
-        && _matchesSonglistValue(song.composer, filters.composers)
         && _matchesSonglistValue(song.uploadedByUsername, filters.uploaders)
-        && (!query || String(song.title || '').toLocaleLowerCase().includes(query));
+        && matchesMetadataFilters(song, filters.metadata)
+        && (!query || songSearchText(song).includes(query));
 }
 
 function _currentSonglistFilters() {
@@ -96,8 +96,8 @@ function _currentSonglistFilters() {
         timeSignatures: _songlistActiveTimeSignatures,
         yearRange: _songlistYearRange,
         bpmRange: _songlistBpmRange,
-        composers: _songlistActiveComposers,
-        uploaders: _songlistActiveUploaders
+        uploaders: _songlistActiveUploaders,
+        metadata: _songlistMetadataFilters
     };
 }
 
@@ -255,6 +255,12 @@ function _openSongInfoContextMenu(pos) {
 			action: () => openTransferSettingsForSong(currentSong.id)
 		},
 		{
+			icon: 'list-tree',
+			label: i18n.t('songs.metadata.modal_title'),
+			disabled: !currentSong,
+			action: () => openSongMetadataModal()
+		},
+		{
 			icon: 'trash',
 			label: i18n.t('songs.delete'),
 			disabled: !canEdit,
@@ -410,8 +416,8 @@ const refreshPanelContent = {
                 { icon: 'gauge',        value: currentSong.bpm ? i18n.t('songs.bpm_value', { bpm: currentSong.bpm }) : null },
                 { icon: 'hash',         value: currentSong.key || null },
                 { icon: 'ruler',        value: currentSong.timeSignature || null },
-                { icon: 'user-round',   value: currentSong.composer || null },
-                { icon: 'calendar',     value: currentSong.year || null },
+                { icon: 'user-round',   value: metadataAuthorNames(currentSong).join(', ') || null },
+                { icon: 'calendar',     value: getSongMetadata(currentSong).released || currentSong.year || null },
                 { icon: 'cloud-upload', value: currentSong.uploadedByUsername ? currentSong.uploadedByUsername : null },
             ];
 
@@ -434,6 +440,13 @@ const refreshPanelContent = {
                     el.appendChild(p);
                     songInfo_mainView.appendChild(el);
                 });
+
+                const metadataBtn = document.createElement('button');
+                metadataBtn.type = 'button';
+                metadataBtn.className = 'btn secondary justify-center';
+                metadataBtn.onclick = () => openSongMetadataModal();
+                metadataBtn.innerHTML = `<i data-lucide="list-tree"></i><span>${escapeHtml(i18n.t('songs.metadata.modal_title'))}</span>`;
+                songInfo_mainView.appendChild(metadataBtn);
             }
         }
 

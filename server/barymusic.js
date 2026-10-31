@@ -15,6 +15,23 @@ const crypto = require('crypto');
 const { ZipArchive } = require('archiver');
 const unzipper = require('unzipper');
 const { XMLParser } = require('fast-xml-parser');
+const {
+	asArray,
+	chordProMetadata,
+	chordProMetadataName,
+	escapeXml,
+	normalizeMetadata,
+	normalizeKeywords,
+	normalizeTags,
+	openLyricsProperties,
+	parseMetadata,
+	serializeMetadata,
+	songComposerFromMetadata,
+	songPropertiesFromChordPro,
+	songPropertiesFromOpenLyrics,
+	xmlText,
+	yearFromMetadata,
+} = require('./song-metadata');
 
 // Formaty wymiany danych
 const SECTION_PREFIX = {
@@ -27,27 +44,13 @@ const SECTION_PREFIX = {
 };
 const PREFIX_SECTION = Object.fromEntries(Object.entries(SECTION_PREFIX).map(([section, prefix]) => [prefix, section]));
 const SECTION_TYPES = new Set(Object.keys(SECTION_PREFIX));
+const BARYMUSIC_ARCHIVE_SCHEMA_VERSION = 3;
 const CHORDPRO_SECTION_STARTS = { soc: 'chorus', sov: 'verse', sob: 'bridge' };
 const CHORDPRO_SECTION_ENDS = new Set(['eoc', 'eov', 'eob']);
-const CHORDPRO_METADATA = new Set(['title', 't', 'composer', 'year', 'key', 'time', 'tempo', 'tag']);
 const CHORDPRO_IGNORED = new Set(['new_song', 'ns']);
 
 function transferWarning(code, values = {}) {
 	return { code, values };
-}
-
-function asArray(value) {
-	if (value == null) return [];
-	return Array.isArray(value) ? value : [value];
-}
-
-function escapeXml(value) {
-	return String(value ?? '')
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&apos;');
 }
 
 function decodeXml(value) {
@@ -57,10 +60,6 @@ function decodeXml(value) {
 		.replace(/&quot;/g, '"')
 		.replace(/&apos;/g, "'")
 		.replace(/&amp;/g, '&');
-}
-
-function xmlText(value) {
-	return typeof value === 'object' ? value?.['#text'] || '' : value;
 }
 
 function expandSectionOrder(order) {
@@ -94,20 +93,38 @@ function normalizeSong(song = {}) {
 	let tags = song.tags ?? song.type ?? [];
 	if (typeof tags === 'string') tags = parseJson(tags, tags ? [tags] : []);
 
+	const metadataInput = parseMetadata(song.metadata);
+	const metadata = normalizeMetadata(metadataInput, { composer: song.composer, year: song.year });
+	tags = normalizeTags([...asArray(tags), ...normalizeKeywords(metadataInput?.keywords)]);
+	const bpm = Number(song.bpm);
+
 	return {
 		archiveId: String(song.archiveId ?? song.id ?? ''),
 		title: String(song.title || '').trim(),
-		tags: asArray(tags).map(value => String(value).trim()).filter(Boolean),
-		bpm: song.bpm == null || song.bpm === '' ? null : Number(song.bpm),
+		tags,
+		bpm: song.bpm == null || song.bpm === '' || !Number.isFinite(bpm) ? null : bpm,
 		key: song.key || null,
 		timeSignature: song.timeSignature || null,
-		composer: song.composer || null,
-		year: song.year == null || song.year === '' ? null : Number(song.year),
+		year: yearFromMetadata(metadata),
+		metadata,
 		lyrics: safeLyrics(lyrics),
 		isPublic: song.isPublic !== false && song.isPublic !== 0,
 		createdAt: song.createdAt ?? null,
 		media: song.media || {},
 	};
+}
+
+function normalizeLegacySongMetadata(metadataInput, legacyFields = {}, existingMetadata = null) {
+	const metadata = normalizeMetadata(metadataInput === undefined ? parseMetadata(existingMetadata) : metadataInput);
+	if (Object.hasOwn(legacyFields, 'composer')) {
+		metadata.authors = metadata.authors.filter(author => author.type !== 'music');
+		const composer = normalizeMetadata({ authors: [{ name: legacyFields.composer, type: 'music' }] }).authors[0];
+		if (composer) metadata.authors.push(composer);
+	}
+	if (Object.hasOwn(legacyFields, 'year')) {
+		metadata.released = normalizeMetadata({ released: legacyFields.year }).released;
+	}
+	return metadata;
 }
 
 function normalizeOpenLpChord(chord) {
@@ -136,15 +153,17 @@ function songToOpenLyrics(input) {
 
 	const order = expandSectionOrder(song.lyrics.order);
 	const properties = [
-		`    <titles><title>${escapeXml(song.title)}</title></titles>`,
-		song.composer ? `    <authors><author type="music">${escapeXml(song.composer)}</author></authors>` : '',
-		song.year ? `    <released>${escapeXml(song.year)}</released>` : '',
-		song.bpm ? `    <tempo>${escapeXml(song.bpm)}</tempo>` : '',
-		song.key ? `    <key>${escapeXml(song.key)}</key>` : '',
-		song.timeSignature ? `    <timeSignature>${escapeXml(song.timeSignature)}</timeSignature>` : '',
-		song.tags.length ? `    <themes>${song.tags.map(tag => `<theme>${escapeXml(tag)}</theme>`).join('')}</themes>` : '',
+		...openLyricsProperties(song),
 		order.length ? `    <verseOrder>${order.map(item => escapeXml(item.id)).join(' ')}</verseOrder>` : '',
 	].filter(Boolean).join('\n');
+	const rootAttributes = [
+		'xmlns="http://openlyrics.info/namespace/2009/song"',
+		'version="0.9"',
+		'createdIn="BaryMusic"',
+		'modifiedIn="BaryMusic"',
+		`modifiedDate="${new Date().toISOString()}"`,
+		song.metadata.lang ? `xml:lang="${escapeXml(song.metadata.lang)}"` : '',
+	].filter(Boolean).join(' ');
 
 	const seen = new Set();
 	const verses = [];
@@ -155,7 +174,7 @@ function songToOpenLyrics(input) {
 		seen.add(entry.id);
 		verses.push(`    <verse name="${escapeXml(entry.id)}"><lines>${(section.lines || []).map(lineToOpenLyrics).join('<br/>')}</lines></verse>`);
 	}
-	return `<?xml version="1.0" encoding="UTF-8"?>\n<song xmlns="http://openlyrics.info/namespace/2009/song" version="0.8" createdIn="BaryMusic" modifiedIn="BaryMusic">\n  <properties>\n${properties}\n  </properties>\n  <lyrics>\n${verses.join('\n')}\n  </lyrics>\n</song>\n`;
+	return `<?xml version="1.0" encoding="UTF-8"?>\n<song ${rootAttributes}>\n  <properties>\n${properties}\n  </properties>\n  <lyrics>\n${verses.join('\n')}\n  </lyrics>\n</song>\n`;
 }
 
 function getXmlAttribute(attrs, name) {
@@ -203,8 +222,6 @@ function songFromOpenLyrics(xml) {
 	if (!title) throw new Error('OpenLyrics title is missing');
 	const version = String(root['@_version'] || '');
 	if (version && !['0.8', '0.9'].includes(version)) throw new Error(`Unsupported OpenLyrics version: ${version}`);
-	const authorValues = asArray(props.authors?.author).map(xmlText).filter(Boolean);
-	const tags = asArray(props.themes?.theme).map(xmlText).filter(Boolean);
 	const sections = Object.create(null);
 	const discoveredOrder = [];
 	const versePattern = /<(?:[\w-]+:)?(?:verse|instrument)\b([^>]*)>([\s\S]*?)<\/(?:[\w-]+:)?(?:verse|instrument)>/gi;
@@ -224,12 +241,7 @@ function songFromOpenLyrics(xml) {
 	return {
 		song: normalizeSong({
 			title,
-			composer: authorValues.join(', ') || null,
-			year: props.released || null,
-			bpm: props.tempo || null,
-			key: props.key || null,
-			timeSignature: props.timeSignature || null,
-			tags,
+			...songPropertiesFromOpenLyrics(root),
 			lyrics: { version: 2, sections, order },
 		}),
 		warnings: [transferWarning('openlyrics_lossy')],
@@ -253,13 +265,7 @@ function songToChordPro(input, { sheetFile = '' } = {}) {
 
 	const safeSheetFile = String(sheetFile).replace(/["{}\r\n]/g, '_');
 	const header = [
-		directive('title', song.title),
-		directive('composer', song.composer),
-		directive('year', song.year),
-		directive('key', song.key),
-		directive('time', song.timeSignature),
-		directive('tempo', song.bpm),
-		...song.tags.map(tag => directive('tag', tag)),
+		...chordProMetadata(song).map(([name, value]) => directive(name, value)),
 		safeSheetFile ? directive('image', `"${safeSheetFile}"`) : '',
 	].filter(Boolean);
 	const body = [];
@@ -276,7 +282,7 @@ function songToChordPro(input, { sheetFile = '' } = {}) {
 
 function songFromChordPro(text, fallbackTitle = '') {
 	if (Buffer.byteLength(String(text), 'utf8') > MAX_TEXT_FILE_SIZE) throw new Error('ChordPro file is too large');
-	const metadata = { tags: [] };
+	const metadataEntries = [];
 	const warnings = [];
 	const images = [];
 	const sections = Object.create(null);
@@ -305,10 +311,8 @@ function songFromChordPro(text, fallbackTitle = '') {
 				const source = chordProImageSource(value);
 				if (source) images.push(source);
 				else warnings.push(transferWarning('chordpro_image_directive'));
-			} else if (CHORDPRO_METADATA.has(name)) {
-				const key = name === 't' ? 'title' : name;
-				if (key === 'tag') metadata.tags.push(value);
-				else metadata[key] = value;
+			} else if (chordProMetadataName(name)) {
+				metadataEntries.push([chordProMetadataName(name), value]);
 			} else if (!CHORDPRO_IGNORED.has(name)) {
 				warnings.push(transferWarning('chordpro_directive', { directive: name }));
 			}
@@ -324,17 +328,12 @@ function songFromChordPro(text, fallbackTitle = '') {
 		}
 		current.lines.push(rawLine);
 	}
-	const title = metadata.title || fallbackTitle || 'Imported song';
+	const properties = songPropertiesFromChordPro(metadataEntries);
 	warnings.push(transferWarning('chordpro_lossy'));
 	return {
 		song: normalizeSong({
-			title,
-			composer: metadata.composer,
-			year: metadata.year,
-			key: metadata.key,
-			timeSignature: metadata.time,
-			bpm: metadata.tempo,
-			tags: metadata.tags,
+			...properties,
+			title: properties.title || fallbackTitle || 'Imported song',
 			lyrics: { version: 2, sections, order },
 		}),
 		images,
@@ -434,7 +433,7 @@ function dbSongToTransfer(row, media = {}) {
 		bpm: row.bpm,
 		key: row.key,
 		timeSignature: row.timeSignature,
-		composer: row.composer,
+		metadata: row.metadata,
 		year: row.year,
 		lyrics: parseJson(row.lyrics, []),
 		isPublic: row.isPublic === 1,
@@ -690,7 +689,9 @@ async function openBaryMusic(filePath, opened = null) {
 		throw new Error('manifest.json is invalid');
 	}
 
-	if (manifest?.format !== 'BaryMusic' || manifest?.schemaVersion !== 2 || !manifest.payload) throw new Error('Unsupported BaryMusic schema');
+	if (manifest?.format !== 'BaryMusic' || ![2, BARYMUSIC_ARCHIVE_SCHEMA_VERSION].includes(manifest?.schemaVersion) || !manifest.payload) {
+		throw new Error('Unsupported BaryMusic schema');
+	}
 	if (!Array.isArray(manifest.files) || manifest.files.length > MAX_ARCHIVE_ENTRIES) throw new Error('Invalid BaryMusic file manifest');
 	const declaredPaths = new Set();
 	let actualSize = 0;
@@ -825,7 +826,7 @@ function validateLibraryPayload(payload) {
 		const song = normalizeSong(input);
 		if (!song.title || song.title.length > MAX_TITLE_LENGTH) throw new Error(`Song ${index + 1} has an invalid title`);
 		if (song.tags.length > 100 || song.tags.some(tag => tag.length > MAX_METADATA_LENGTH)) throw new Error(`Song ${index + 1} has invalid tags`);
-		if ([song.key, song.timeSignature, song.composer].some(value => value != null && String(value).length > MAX_METADATA_LENGTH)) throw new Error(`Song ${index + 1} has invalid metadata`);
+		if ([song.key, song.timeSignature].some(value => value != null && String(value).length > MAX_METADATA_LENGTH)) throw new Error(`Song ${index + 1} has invalid metadata`);
 		if ([song.bpm, song.year].some(value => value != null && !Number.isFinite(value))) throw new Error(`Song ${index + 1} has invalid numeric metadata`);
 		if (Buffer.byteLength(JSON.stringify(song.lyrics), 'utf8') > MAX_LYRICS_SIZE) throw new Error(`Song ${index + 1} lyrics are too large`);
 		if (!song.lyrics.sections || Array.isArray(song.lyrics.sections) || !Array.isArray(song.lyrics.order)) throw new Error(`Song ${index + 1} lyrics are invalid`);
@@ -974,7 +975,7 @@ async function importLibrary(db, payload, userId, archivePath, audioDir, notesDi
 			if (!song.title) throw new Error(`Song ${index + 1} has no title`);
 			const result = await dbRun(
 				db,
-				`INSERT INTO songs (title, type, bpm, key, timeSignature, composer, year, lyrics, filesAudio, filesSheets, uploadedBy, isPublic, createdAt)
+				`INSERT INTO songs (title, type, bpm, key, timeSignature, year, metadata, lyrics, filesAudio, filesSheets, uploadedBy, isPublic, createdAt)
 				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, COALESCE(?, strftime('%s', 'now')))`,
 				[
 					song.title,
@@ -982,8 +983,8 @@ async function importLibrary(db, payload, userId, archivePath, audioDir, notesDi
 					song.bpm,
 					song.key,
 					song.timeSignature,
-					song.composer,
 					song.year,
+					serializeMetadata(song.metadata),
 					JSON.stringify(song.lyrics),
 					userId,
 					song.isPublic ? 1 : 0,
@@ -1130,7 +1131,7 @@ async function restoreBackup(db, opened, { audioDir, notesDir, updateEnvFile, co
 				const song = normalizeSong(songInput);
 				await dbRun(
 					db,
-					`INSERT INTO songs (id, title, type, bpm, key, timeSignature, composer, year, lyrics, filesAudio, filesSheets, uploadedBy, isPublic, createdAt)
+					`INSERT INTO songs (id, title, type, bpm, key, timeSignature, year, metadata, lyrics, filesAudio, filesSheets, uploadedBy, isPublic, createdAt)
 					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 					[
 						songInput.id,
@@ -1139,8 +1140,8 @@ async function restoreBackup(db, opened, { audioDir, notesDir, updateEnvFile, co
 						song.bpm,
 						song.key,
 						song.timeSignature,
-						song.composer,
 						song.year,
+						serializeMetadata(song.metadata),
 						JSON.stringify(song.lyrics),
 						song.media?.audio ? 1 : 0,
 						song.media?.sheets ? path.extname(song.media.sheets).toLowerCase() : null,
@@ -1368,6 +1369,10 @@ function parseLyricsFromDb(lyricsStr) {
 		lyrics: resolveLyrics(parsed),
 		lyricsRaw: Array.isArray(parsed) ? null : parsed,
 	};
+}
+
+function songMetadataFromDb(metadataStr) {
+	return normalizeMetadata(parseMetadata(metadataStr));
 }
 
 function parseTagsFromDb(typeStr) {
@@ -1641,7 +1646,7 @@ wss.on('connection', async (ws, req) => {
 				if (!await requireWebSocketAuthentication(ws)) break;
 
 				db.get(
-					`SELECT s.isPublic, s.title, s.type, s.bpm, s.key, s.timeSignature, s.composer, s.year, s.lyrics, s.filesAudio, s.filesSheets
+					`SELECT s.isPublic, s.title, s.type, s.bpm, s.key, s.timeSignature, s.year, s.metadata, s.lyrics, s.filesAudio, s.filesSheets
 					 FROM songs s
 					 WHERE s.id = ? AND (s.isPublic = 1 OR s.uploadedBy = (SELECT id FROM users WHERE username = ?))`,
 					[input.songId, ws.username],
@@ -1667,8 +1672,8 @@ wss.on('connection', async (ws, req) => {
 							bpm: song.bpm,
 							key: song.key,
 							timeSignature: song.timeSignature,
-							composer: song.composer,
 							year: song.year,
+							metadata: songMetadataFromDb(song.metadata),
 							lyrics,
 							lyricsRaw,
 							files: { audio: song.filesAudio === 1, sheets: song.filesSheets || null },
@@ -2050,13 +2055,32 @@ function createBackup(callback) {
 	}
 }
 
+let resolveDatabaseReady;
+let rejectDatabaseReady;
+const databaseReady = new Promise((resolve, reject) => {
+	resolveDatabaseReady = resolve;
+	rejectDatabaseReady = reject;
+});
+databaseReady.catch(() => {});
+
 const db = new sqlite3.Database(config.dbPath, (err) => {
 	if (err) {
 		console.error('Database connection error:', err);
+		rejectDatabaseReady(err);
     } else {
         createBackup(() => {
-            initializeDatabase(() => {
-                applyConfigToDatabase();
+            initializeDatabase(error => {
+                if (error) {
+                    console.error('Database initialization error:', error);
+                    rejectDatabaseReady(error);
+                    return;
+                }
+                try {
+                    applyConfigToDatabase();
+                    resolveDatabaseReady();
+                } catch (initializationError) {
+                    rejectDatabaseReady(initializationError);
+                }
             });
         });
     }
@@ -2092,8 +2116,8 @@ function initializeDatabase(callback) {
 			"bpm"	INTEGER,
 			"key"	TEXT,
 			"timeSignature"	TEXT,
-			"composer"	TEXT,
 			"year"	INTEGER,
+			"metadata"	TEXT,
 			"lyrics"	TEXT,
 			"filesAudio"	INTEGER DEFAULT 0,
 			"filesSheets"	TEXT DEFAULT NULL,
@@ -2126,14 +2150,57 @@ function initializeDatabase(callback) {
 			FOREIGN KEY("userId") REFERENCES "users"("id") ON DELETE CASCADE,
 			UNIQUE("userId", "channelId")
 		)`, (err) => {
-			if (err) console.error('Error initializing the user_settings table:', err);
-		});
-
-		db.run('PRAGMA user_version = 1', (err) => {
-			if (err) console.error('Error setting database schema version:', err);
-			if (typeof callback === 'function') callback();
+			if (err) {
+				if (typeof callback === 'function') callback(err);
+				return;
+			}
+			migrateDatabase().then(
+				() => { if (typeof callback === 'function') callback(); },
+				(error) => { if (typeof callback === 'function') callback(error); }
+			);
 		});
 	});
+}
+
+const DATABASE_SCHEMA_VERSION = 2;
+
+// Wersja 2: metadane utworów w kolumnie JSON, połączenie słów kluczowych z tagami.
+async function migrateSongMetadata(database) {
+	const columns = (await dbAll(database, 'PRAGMA table_info(songs)')).map(column => column.name);
+	if (!columns.includes('metadata')) await dbRun(database, 'ALTER TABLE songs ADD COLUMN "metadata" TEXT');
+
+	const legacyFields = ['composer', 'year'].filter(column => columns.includes(column));
+	const rows = await dbAll(database, `SELECT id, type, metadata${legacyFields.map(column => `, "${column}"`).join('')} FROM songs`);
+	for (const row of rows) {
+		const existingMetadata = parseMetadata(row.metadata);
+		const metadata = serializeMetadata(normalizeMetadata(existingMetadata, {
+			composer: row.composer,
+			year: row.year,
+		}));
+		const tags = parseJson(row.type, row.type ? [row.type] : []);
+		const mergedTags = normalizeTags([...asArray(tags), ...normalizeKeywords(existingMetadata?.keywords)]);
+		await dbRun(database, 'UPDATE songs SET type = ?, metadata = ? WHERE id = ?', [
+			mergedTags.length ? JSON.stringify(mergedTags) : null,
+			metadata,
+			row.id,
+		]);
+	}
+	if (columns.includes('composer')) await dbRun(database, 'ALTER TABLE songs DROP COLUMN "composer"');
+}
+
+async function migrateDatabase(database = db) {
+	const { user_version: version } = await dbGet(database, 'PRAGMA user_version');
+	if (version >= DATABASE_SCHEMA_VERSION) return;
+
+	await dbRun(database, 'BEGIN');
+	try {
+		await migrateSongMetadata(database);
+		await dbRun(database, `PRAGMA user_version = ${DATABASE_SCHEMA_VERSION}`);
+		await dbRun(database, 'COMMIT');
+	} catch (error) {
+		await dbRun(database, 'ROLLBACK');
+		throw error;
+	}
 }
 
 function applyConfigToDatabase() {
@@ -2510,6 +2577,7 @@ app.get('/api/songs', requireAuthenticated, async (req, res) => {
 
 		const songs = rows.map(row => {
 			const { lyrics, lyricsRaw } = parseLyricsFromDb(row.lyrics);
+			const metadata = songMetadataFromDb(row.metadata);
 			return {
 				id: row.id,
 				title: row.title,
@@ -2517,8 +2585,9 @@ app.get('/api/songs', requireAuthenticated, async (req, res) => {
 				bpm: row.bpm,
 				key: row.key,
 				timeSignature: row.timeSignature,
-				composer: row.composer,
-				year: row.year,
+				year: yearFromMetadata(metadata),
+				composer: songComposerFromMetadata(metadata),
+				metadata,
 				lyrics,
 				lyricsRaw,
 				files: {
@@ -2568,6 +2637,7 @@ app.get('/api/songs/:id', requireAuthenticated, async (req, res) => {
 			}
 
 			const { lyrics, lyricsRaw } = parseLyricsFromDb(row.lyrics);
+			const metadata = songMetadataFromDb(row.metadata);
 			const song = {
 				id: row.id,
 				title: row.title,
@@ -2575,8 +2645,9 @@ app.get('/api/songs/:id', requireAuthenticated, async (req, res) => {
 				bpm: row.bpm,
 				key: row.key,
 				timeSignature: row.timeSignature,
-				composer: row.composer,
-				year: row.year,
+				year: yearFromMetadata(metadata),
+				composer: songComposerFromMetadata(metadata),
+				metadata,
 				lyrics,
 				lyricsRaw,
 				files: {
@@ -2625,7 +2696,7 @@ app.post('/api/songs', requireAuthenticated, songWriteLimiter, async (req, res) 
 				return res.status(403).json({ error: 'Brak uprawnień do dodawania piosenek' });
 			}
 
-			const { title, tags, bpm, key, timeSignature, composer, year, lyrics, files, isPublic} = req.body;
+   const { title, tags, bpm, key, timeSignature, metadata: metadataInput, lyrics, files, isPublic} = req.body;
 
 			if (!title) {
 				return res.status(400).json({ error: 'Tytuł jest wymagany' });
@@ -2633,19 +2704,23 @@ app.post('/api/songs', requireAuthenticated, songWriteLimiter, async (req, res) 
 			if (typeof title !== 'string' || title.length > 200) {
 				return res.status(400).json({ error: 'Tytuł może mieć maksymalnie 200 znaków' });
 			}
-			if (composer != null && (typeof composer !== 'string' || composer.length > 200)) {
-				return res.status(400).json({ error: 'Kompozytor może mieć maksymalnie 200 znaków' });
+			if (metadataInput != null && (typeof metadataInput !== 'object' || Array.isArray(metadataInput))) {
+				return res.status(400).json({ error: 'Nieprawidłowe metadane utworu' });
 			}
 
+			const metadata = normalizeLegacySongMetadata(metadataInput, req.body);
 			const lyricsJSON = JSON.stringify(lyrics || []);
-			const tagsJSON = serializeTagsForDb(tags);
+			const tagsJSON = serializeTagsForDb(normalizeTags([
+				...asArray(tags),
+				...normalizeKeywords(metadataInput?.keywords),
+			]));
 			const filesAudio = files?.audio ? 1 : 0;
 			const publicFlag = isPublic !== undefined ? (isPublic ? 1 : 0) : 1;
 
 			db.run(
-				`INSERT INTO songs (title, type, bpm, key, timeSignature, composer, year, lyrics, filesAudio, uploadedBy, isPublic)
+				`INSERT INTO songs (title, type, bpm, key, timeSignature, year, metadata, lyrics, filesAudio, uploadedBy, isPublic)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				[title, tagsJSON, bpm, key, timeSignature, composer, year, lyricsJSON, filesAudio, userId, publicFlag],
+				[title, tagsJSON, bpm, key, timeSignature, yearFromMetadata(metadata), serializeMetadata(metadata), lyricsJSON, filesAudio, userId, publicFlag],
 				function(err) {
 					if (err) {
 						console.error('Error adding song:', err);
@@ -2675,7 +2750,7 @@ app.put('/api/songs/:id', requireAuthenticated, songWriteLimiter, async (req, re
 
 	// Sprawdź, czy użytkownik może edytować
 	db.get(
-		'SELECT uploadedBy FROM songs WHERE id = ?',
+		'SELECT uploadedBy, type, metadata FROM songs WHERE id = ?',
 		[id],
 		(err, song) => {
 			if (err) {
@@ -2701,17 +2776,26 @@ app.put('/api/songs/:id', requireAuthenticated, songWriteLimiter, async (req, re
 						return res.status(403).json({ error: 'Brak uprawnień do edycji tej piosenki' });
 					}
 
-					const { title, tags, bpm, key, timeSignature, composer, year, lyrics, files, isPublic } = req.body;
+					const { title, tags, bpm, key, timeSignature, metadata: metadataInput, lyrics, files, isPublic } = req.body;
 
 					if (title !== undefined && (typeof title !== 'string' || title.length > 200)) {
 						return res.status(400).json({ error: 'Tytuł może mieć maksymalnie 200 znaków' });
 					}
-					if (composer != null && (typeof composer !== 'string' || composer.length > 200)) {
-						return res.status(400).json({ error: 'Kompozytor może mieć maksymalnie 200 znaków' });
+					if (metadataInput !== undefined && (!metadataInput || typeof metadataInput !== 'object' || Array.isArray(metadataInput))) {
+						return res.status(400).json({ error: 'Nieprawidłowe metadane utworu' });
 					}
 
+					const hasLegacyMetadata = Object.hasOwn(req.body, 'composer') || Object.hasOwn(req.body, 'year');
+					const metadata = metadataInput !== undefined || hasLegacyMetadata
+						? normalizeLegacySongMetadata(metadataInput, req.body, song.metadata)
+						: undefined;
 					const lyricsJSON = lyrics ? JSON.stringify(lyrics) : undefined;
-					const tagsJSON = tags !== undefined ? serializeTagsForDb(tags) : undefined;
+					const tagsJSON = tags !== undefined || metadataInput?.keywords !== undefined
+						? serializeTagsForDb(normalizeTags([
+							...(tags !== undefined ? asArray(tags) : parseTagsFromDb(song.type)),
+							...normalizeKeywords(metadataInput?.keywords),
+						]))
+						: undefined;
 					const filesAudio = files?.audio !== undefined ? (files.audio ? 1 : 0) : undefined;
 					const publicFlag = isPublic !== undefined ? (isPublic ? 1 : 0) : undefined;
 
@@ -2724,8 +2808,10 @@ app.put('/api/songs/:id', requireAuthenticated, songWriteLimiter, async (req, re
 					if (bpm !== undefined) { updates.push('bpm = ?'); values.push(bpm); }
 					if (key !== undefined) { updates.push('key = ?'); values.push(key); }
 					if (timeSignature !== undefined) { updates.push('timeSignature = ?'); values.push(timeSignature); }
-					if (composer !== undefined) { updates.push('composer = ?'); values.push(composer); }
-					if (year !== undefined) { updates.push('year = ?'); values.push(year); }
+					if (metadata !== undefined) {
+						updates.push('year = ?', 'metadata = ?');
+						values.push(yearFromMetadata(metadata), serializeMetadata(metadata));
+					}
 					if (lyricsJSON !== undefined) { updates.push('lyrics = ?'); values.push(lyricsJSON); }
 					if (filesAudio !== undefined) { updates.push('filesAudio = ?'); values.push(filesAudio); }
 					if (publicFlag !== undefined) { updates.push('isPublic = ?'); values.push(publicFlag); }
@@ -3603,7 +3689,7 @@ app.post('/api/transfer/export', requireAuthenticated, transferLimiter, async (r
 		const { entries, mediaBySong } = await buildMediaEntries(rows, audioDir, notesDir);
 		const manifest = {
 			format: 'BaryMusic',
-			schemaVersion: 2,
+			schemaVersion: BARYMUSIC_ARCHIVE_SCHEMA_VERSION,
 			kind: 'library',
 			appVersion: SOCKET_VERSION,
 			exportedAt: new Date().toISOString(),
@@ -3633,7 +3719,7 @@ app.get('/api/admin/backup', requireAuthenticated, transferLimiter, async (req, 
 		const { entries, mediaBySong } = await buildMediaEntries(rows, audioDir, notesDir);
 		const manifest = {
 			format: 'BaryMusic',
-			schemaVersion: 2,
+			schemaVersion: BARYMUSIC_ARCHIVE_SCHEMA_VERSION,
 			kind: 'server-backup',
 			appVersion: SOCKET_VERSION,
 			exportedAt: new Date().toISOString(),
@@ -3806,7 +3892,8 @@ setInterval(() => {
     }
 }, 60 * 1000).unref();
 
-function start(port, host) {
+async function start(port, host) {
+	await databaseReady;
 	const listenPort = port ?? config.port;
 	const listenHost = host ?? config.host;
 	return new Promise((resolve, reject) => {
@@ -3833,6 +3920,7 @@ module.exports = {
 	closeDatabase,
 	convertUploadedSheet,
 	accessibleRowsById,
+	normalizeLegacySongMetadata,
 	normalizeSong,
 	safeLyrics,
 	sanitizeFilename,
@@ -3841,6 +3929,7 @@ module.exports = {
 	songToChordPro,
 	songToOpenLyrics,
 	streamTextExport,
+	migrateDatabase,
 	openBaryMusic,
 	parseExternalZip,
 	parseUploadedFiles,
@@ -3848,6 +3937,7 @@ module.exports = {
 	validateBackupManifest,
 	importLibrary,
 	restoreBackup,
+	songComposerFromMetadata,
 	setMutableMediaCacheHeaders,
 }
 

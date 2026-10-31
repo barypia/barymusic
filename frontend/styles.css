@@ -1534,6 +1534,7 @@ body.modal-active {
 	font-weight: 500;
 }
 
+
 .format-comparison tbody tr:last-child > * {
 	border-bottom: 0;
 }
@@ -1551,22 +1552,19 @@ body.modal-active {
 }
 
 .format-support {
-	position: relative;
 	display: inline-block;
 	border-bottom: 1px dotted currentColor;
 	cursor: help;
 	outline: none;
 }
 
-th[scope="row"]::after,
-.format-support::after {
-	content: attr(data-tooltip);
-	position: absolute;
-	z-index: 20;
-	left: 50%;
-	bottom: calc(100% + 0.5rem);
+.format-comparison-tooltip {
+	position: fixed;
+	z-index: 10000;
 	width: max-content;
-	max-width: min(17rem, 70vw);
+	max-width: min(17rem, calc(100vw - 24px));
+	max-height: calc(100vh - 24px);
+	overflow-y: auto;
 	padding: 0.5rem 0.65rem;
 	border: 1px solid var(--color-rim);
 	border-radius: 0.5rem;
@@ -1579,26 +1577,14 @@ th[scope="row"]::after,
 	text-align: left;
 	white-space: normal;
 	pointer-events: none;
+	visibility: hidden;
 	opacity: 0;
-	transform: translate(-50%, 0.25rem);
-	transition: opacity 0.15s ease, transform 0.15s ease;
+	transition: opacity 0.15s ease, visibility 0.15s ease;
 }
 
-.format-comparison td:last-child .format-support::after {
-	right: 0;
-	left: auto;
-	transform: translate(0, 0.25rem);
-}
-
-.format-support:hover::after,
-.format-support:focus-visible::after {
+.format-comparison-tooltip.is-visible {
+	visibility: visible;
 	opacity: 1;
-	transform: translate(-50%, 0);
-}
-
-.format-comparison td:last-child .format-support:hover::after,
-.format-comparison td:last-child .format-support:focus-visible::after {
-	transform: translate(0, 0);
 }
 
 #pingValue {
@@ -2686,4 +2672,134 @@ html.no-animations *::after {
 .modal .btn {
 	backdrop-filter: none !important;
 	-webkit-backdrop-filter: none !important;
+}
+
+/* ==================== METADANE UTWORU ==================== */
+
+.metadata-section {
+	border-radius: 10px;
+}
+
+.metadata-section__content {
+	display: grid;
+	grid-template-rows: 0fr;
+	visibility: hidden;
+	transition: grid-template-rows 0.24s ease, visibility 0s linear 0.24s;
+}
+
+.metadata-section[open] > .metadata-section__content {
+	grid-template-rows: 1fr;
+	visibility: visible;
+	transition: grid-template-rows 0.24s ease, visibility 0s;
+}
+
+.metadata-section[open].metadata-section--collapsed > .metadata-section__content {
+	grid-template-rows: 0fr;
+	visibility: hidden;
+}
+
+.metadata-section__content-inner {
+	min-height: 0;
+	overflow: hidden;
+}
+
+.metadata-section summary {
+	list-style: none;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-size: 0.85rem;
+	font-weight: 500;
+	color: var(--text-primary);
+	padding: 0.75rem 1rem;
+	user-select: none;
+}
+
+.metadata-section summary::-webkit-details-marker {
+	display: none;
+}
+
+.metadata-section summary:hover {
+	background: var(--color-secondary-hover-bg);
+}
+
+.metadata-section__chevron {
+	margin-left: auto;
+	width: 18px;
+	height: 18px;
+	transition: transform 0.2s ease;
+	color: var(--text-secondary);
+}
+
+.metadata-section[open] > summary .metadata-section__chevron {
+	transform: rotate(180deg);
+}
+
+.metadata-section__content-inner > .list-item:first-child {
+	border-top: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.metadata-section__content,
+	.metadata-section__chevron {
+		transition: none;
+	}
+}
+
+/* Wiersze metadanych (autorzy, śpiewniki, tytuły, komentarze) */
+.metadata-rows {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	margin-top: 0.35rem;
+}
+
+.metadata-row {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.metadata-row__field {
+	flex: 1;
+	min-width: 0;
+	padding: 0.3rem 0.5rem;
+	border: 1px solid var(--color-rim-subtle);
+	border-radius: 6px;
+	background: var(--color-surface);
+	color: var(--text-primary);
+	font-size: 0.82rem;
+	outline: none;
+	transition: border-color 0.15s ease;
+}
+
+.metadata-row__field:focus {
+	border-color: var(--color-accent);
+}
+
+.metadata-row__field--narrow {
+	flex: 0 0 100px;
+}
+
+.metadata-row select.metadata-row__field {
+	cursor: pointer;
+}
+
+.metadata-row__check {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	font-size: 0.775rem;
+	color: var(--text-secondary);
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+/* Modal – widok metadanych */
+.metadata-view__label {
+	font-size: 0.775rem;
+	color: var(--text-secondary);
+	flex-shrink: 0;
+	min-width: 120px;
 }
