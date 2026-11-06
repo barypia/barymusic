@@ -34,13 +34,6 @@ function Copy-DirectoryWithoutNodeModules {
 
 try {
     New-Item -ItemType Directory -Path $temporaryRoot -Force | Out-Null
-    New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
-    if (Test-Path -LiteralPath $stageRoot) {
-        Remove-Item -LiteralPath $stageRoot -Recurse -Force
-    }
-    if (Test-Path -LiteralPath $zipPath) {
-        Remove-Item -LiteralPath $zipPath -Force
-    }
 
     Write-Host "Downloading Node.js v$NodeVersion..."
     Invoke-WebRequest -UseBasicParsing -Uri "$nodeBaseUrl/$nodeArchiveName" -OutFile $nodeArchivePath
@@ -64,6 +57,17 @@ try {
         throw 'The downloaded Node.js archive has an unexpected layout.'
     }
 
+    & (Join-Path $unpackedNode.FullName 'node.exe') (Join-Path $repoRoot 'scripts\generate-build-info.js')
+    if ($LASTEXITCODE -ne 0) { throw "Build info generation failed with exit code $LASTEXITCODE." }
+
+    New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
+    if (Test-Path -LiteralPath $stageRoot) {
+        Remove-Item -LiteralPath $stageRoot -Recurse -Force
+    }
+    if (Test-Path -LiteralPath $zipPath) {
+        Remove-Item -LiteralPath $zipPath -Force
+    }
+
     $runtimeDir = Join-Path $stageRoot 'runtime'
     $appDir = Join-Path $stageRoot 'app'
     $serverDir = Join-Path $appDir 'server'
@@ -73,6 +77,7 @@ try {
 
     Copy-Item -LiteralPath (Join-Path $repoRoot 'server\barymusic.js') -Destination $serverDir
     Copy-Item -LiteralPath (Join-Path $repoRoot 'server\song-metadata.js') -Destination $serverDir
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'server\build-info.json') -Destination $serverDir
     Copy-Item -LiteralPath (Join-Path $repoRoot 'server\package.json') -Destination $serverDir
     Copy-Item -LiteralPath (Join-Path $repoRoot 'server\package-lock.json') -Destination $serverDir
     Copy-DirectoryWithoutNodeModules -Source (Join-Path $repoRoot 'frontend') -Destination (Join-Path $appDir 'frontend')

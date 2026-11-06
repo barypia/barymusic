@@ -79,6 +79,9 @@ const i18n = {
             if (typeof updateSetlistCount === 'function') {
                 updateSetlistCount()
             }
+            if (typeof renderVersionInfo === 'function') {
+                renderVersionInfo();
+            }
         });
     },
 

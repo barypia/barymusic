@@ -134,7 +134,7 @@ node barymusic.js
 # Otwórz http://localhost:3000
 ```
  
-#### Tailwind CLI
+#### Tailwind CLI (w drugim terminalu)
  
 ```bash
 cd frontend
@@ -151,11 +151,21 @@ Copy-Item server/.env.example server/.env
 
 W systemie macOS lub Linux użyj `cp server/.env.example server/.env`. Lokalny plik `server/.env` jest ignorowany przez Git i nie powinien być commitowany. Zmienne ustawione bezpośrednio w środowisku procesu mają pierwszeństwo nad wartościami z tego pliku.
 
-Aby zbudować wydanie Windows:
+### Budowanie Windows Portable:
 
 ```powershell
 .\scripts\build-windows-portable.ps1
 ```
+
+### Budowanie obrazu Docker:
+Wymagania: **Docker, Git, Node.js 22 lub nowszy**
+
+```bash
+node scripts/build-docker.js --tag barymusic:local .
+```
+
+Wrapper generuje metadane buildu i przekazuje do Dockera tylko hash commitu oraz stan dirty; To polecenie buduje obraz lokalnie i niczego nie publikuje.
+
 ---
  
 ### Licencja

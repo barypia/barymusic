@@ -6,6 +6,17 @@ WORKDIR /app
 COPY server/package.json server/package-lock.json ./
 RUN npm ci --omit=dev
 
+# Build metadata is generated from values supplied by the local build wrapper.
+FROM node:22.23.2-alpine AS build-info
+WORKDIR /source
+COPY scripts/generate-build-info.js ./scripts/generate-build-info.js
+COPY server/package.json ./server/package.json
+ARG BARYMUSIC_BUILD_COMMIT
+ARG BARYMUSIC_BUILD_DIRTY
+ENV BARYMUSIC_BUILD_COMMIT=${BARYMUSIC_BUILD_COMMIT} \
+    BARYMUSIC_BUILD_DIRTY=${BARYMUSIC_BUILD_DIRTY}
+RUN node scripts/generate-build-info.js --from-env server/build-info.json
+
 # Obraz aplikacji
 FROM node:22.23.2-alpine
 
@@ -18,6 +29,7 @@ WORKDIR /app
 
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY --chown=node:node server/barymusic.js server/song-metadata.js server/package.json ./
+COPY --from=build-info --chown=node:node /source/server/build-info.json ./build-info.json
 COPY --chown=node:node frontend ./frontend
 
 RUN mkdir -p /var/lib/barymusic/config /var/lib/barymusic/data/audio /var/lib/barymusic/data/notes /var/lib/barymusic/logs \

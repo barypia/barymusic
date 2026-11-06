@@ -1,13 +1,13 @@
 .git
+**/.git
 .github
 .vscode
 .claude
 .agents
-.codex
 **/node_modules
 **/.env
 server/data
 server/db.sqlite3*
 server/test
+server/build-info.json
 dist
-*.log

@@ -611,7 +611,8 @@
       "google_sans_code_license": "OFL 1.1"
     },
     "messages": {
-      "version_error": "Błąd pobierania wersji"
+      "version_error": "Błąd pobierania wersji",
+      "update_available": "Dostępna aktualizacja — {{version}}"
     }
   }
 }

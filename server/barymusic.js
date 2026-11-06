@@ -15,6 +15,7 @@ const crypto = require('crypto');
 const { ZipArchive } = require('archiver');
 const unzipper = require('unzipper');
 const { XMLParser } = require('fast-xml-parser');
+const semver = require('semver');
 const {
 	asArray,
 	chordProMetadata,
@@ -32,6 +33,111 @@ const {
 	xmlText,
 	yearFromMetadata,
 } = require('./song-metadata');
+
+const LATEST_RELEASE_URL = 'https://api.github.com/repos/barypia/barymusic/releases/latest';
+const CACHE_DURATION_MS = 6 * 60 * 60 * 1000;
+const ERROR_CACHE_DURATION_MS = 5 * 60 * 1000;
+const REQUEST_TIMEOUT_MS = 8000;
+
+function normalizeVersion(version) {
+	if (typeof version !== 'string') return null;
+	let normalized = version.trim();
+	if (!normalized) return null;
+	if (/^v?\d+\.\d+(?:[-+].*)?$/.test(normalized)) {
+		normalized = normalized.replace(/^(v?\d+\.\d+)(?=$|[-+])/, '$1.0');
+	}
+	return semver.valid(normalized);
+}
+
+function isUpdateAvailable(currentVersion, latestVersion) {
+	const current = normalizeVersion(currentVersion);
+	const latest = normalizeVersion(latestVersion);
+	if (!current || !latest) return null;
+	return semver.gt(latest, current);
+}
+
+function isReleaseUrl(value) {
+	if (typeof value !== 'string') return false;
+	try {
+		const url = new URL(value);
+		return url.protocol === 'https:'
+			&& url.hostname === 'github.com'
+			&& url.pathname.startsWith('/barypia/barymusic/releases/');
+	} catch {
+		return false;
+	}
+}
+
+function createVersionService({ version, buildInfo = {} } = {}) {
+	let cachedRelease = null;
+	let pendingRequest = null;
+
+	async function fetchLatestRelease() {
+		if (cachedRelease && cachedRelease.expiresAt > Date.now()) return cachedRelease.value;
+		if (pendingRequest) return pendingRequest;
+
+		pendingRequest = (async () => {
+			let result = { status: 'unknown', version: null, url: null };
+			let cacheFor = ERROR_CACHE_DURATION_MS;
+			const controller = new AbortController();
+			const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+			try {
+				const response = await fetch(LATEST_RELEASE_URL, {
+					headers: { Accept: 'application/vnd.github+json' },
+					signal: controller.signal,
+				});
+				if (!response?.ok) throw new Error(`GitHub returned HTTP ${response?.status}`);
+				const release = await response.json();
+				const releaseVersion = typeof release?.tag_name === 'string' ? release.tag_name.trim() : '';
+				if (!normalizeVersion(releaseVersion) || !isReleaseUrl(release?.html_url)) {
+					throw new Error('GitHub returned invalid release data');
+				}
+				const available = isUpdateAvailable(version, releaseVersion);
+				if (available === null) throw new Error('Application version is invalid');
+				result = available
+					? { status: 'available', version: releaseVersion, url: release.html_url }
+					: { status: 'none', version: null, url: null };
+				cacheFor = CACHE_DURATION_MS;
+			} catch (error) {
+				console.warn('Could not check for BaryMusic updates:', error.message);
+			} finally {
+				clearTimeout(timeout);
+			}
+			cachedRelease = { value: result, expiresAt: Date.now() + cacheFor };
+			return result;
+		})();
+
+		try {
+			return await pendingRequest;
+		} finally {
+			pendingRequest = null;
+		}
+	}
+
+	return {
+		async getVersionInfo() {
+			const release = await fetchLatestRelease();
+			const commit = typeof buildInfo.commit === 'string' && /^[0-9a-f]{7,64}$/i.test(buildInfo.commit)
+				? buildInfo.commit
+				: null;
+			return {
+				version: buildInfo.version || version || null,
+				commit,
+				dirty: typeof buildInfo.dirty === 'boolean' ? buildInfo.dirty : null,
+				update: release,
+			};
+		},
+	};
+}
+
+function readBuildInfo(filePath = path.join(__dirname, 'build-info.json')) {
+	try {
+		const buildInfo = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+		return buildInfo && typeof buildInfo === 'object' && !Array.isArray(buildInfo) ? buildInfo : {};
+	} catch {
+		return {};
+	}
+}
 
 // Formaty wymiany danych
 const SECTION_PREFIX = {
@@ -1216,6 +1322,7 @@ async function restoreBackup(db, opened, { audioDir, notesDir, updateEnvFile, co
 
 const versionData = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
 const SOCKET_VERSION = versionData['version'];
+const versionService = createVersionService({ version: SOCKET_VERSION, buildInfo: readBuildInfo() });
 console.log(`BaryMusic v${SOCKET_VERSION}`)
 
 const baryMusicHome = process.env.BARYMUSIC_HOME
@@ -2242,6 +2349,11 @@ app.use(cors({
 
 app.use(express.json());
 app.use(cookieParser());
+
+app.get('/api/version', async (_req, res) => {
+	res.set('Cache-Control', 'no-store');
+	res.json(await versionService.getVersionInfo());
+});
 
 function getServiceHealth(callback) {
 	const checks = {

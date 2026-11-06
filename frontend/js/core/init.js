@@ -122,6 +122,37 @@ function showStartupSetupSkeleton() {
     });
 }
 
+let versionInfo = null;
+
+function renderVersionInfo() {
+	const versionElement = document.getElementById('barymusic-version');
+	const commitElement = document.getElementById('barymusic-commit');
+	const updateElement = document.getElementById('barymusic-update');
+	const badge = document.getElementById('setup-version-badge');
+	const version = versionInfo?.version;
+
+	if (versionElement) {
+		versionElement.removeAttribute('data-i18n');
+		versionElement.textContent = version ? `v${version}` : i18n.t('settings.messages.version_error');
+	}
+	if (commitElement) {
+		commitElement.textContent = versionInfo?.commit ? versionInfo.commit.slice(0, 7) : '';
+	}
+	if (updateElement) {
+		const hasUpdate = versionInfo?.update?.status === 'available' && versionInfo.update.url;
+		updateElement.classList.toggle('hidden', !hasUpdate);
+		if (hasUpdate) {
+			updateElement.href = versionInfo.update.url;
+			updateElement.textContent = i18n.t('settings.messages.update_available', { version: versionInfo.update.version });
+		}
+	}
+	if (badge) {
+		badge.classList.remove('setup-version-badge--skeleton');
+		if (version) badge.textContent = i18n.t('common.version_value', { version });
+	}
+	if (version) window.appVersion = version;
+}
+
 /**
  * Load remaining application scripts after i18n is initialized
  * Ensures proper startup order and prevents race conditions
@@ -191,20 +222,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.dispatchEvent(new CustomEvent('i18nReady'));
     if (typeof promptForInitialAdminSetup === 'function') promptForInitialAdminSetup();
     
-    fetch('/package.json')
-        .then(r => r.json())
-        .then(pkg => {
-            const badge = document.getElementById('setup-version-badge');
-            if (badge) badge.classList.remove('setup-version-badge--skeleton');
-            if (!pkg.version) return;
-            window.appVersion = pkg.version;
-            const el = document.getElementById('barymusic-version');
-            if (el) el.textContent = pkg.version;
-            if (badge) badge.textContent = i18n.t('common.version_value', { version: pkg.version });
+    fetch('/api/version', { cache: 'no-store' })
+        .then(response => {
+            if (!response.ok) throw new Error(`Version request failed with HTTP ${response.status}`);
+            return response.json();
         })
-        .catch(() => {
-            const badge = document.getElementById('setup-version-badge');
-            if (badge) badge.classList.remove('setup-version-badge--skeleton');
+        .then(info => {
+            versionInfo = info;
+            renderVersionInfo();
+        })
+        .catch(error => {
+            console.warn('Could not load application version:', error.message);
+            renderVersionInfo();
         });
 });
 

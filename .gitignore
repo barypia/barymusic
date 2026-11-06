@@ -2,6 +2,7 @@ server/db.sqlite3
 server/db.sqlite3.bak
 server/node_modules
 server/data/
+server/build-info.json
 server/.env
 server/.env.*
 !server/.env.example
