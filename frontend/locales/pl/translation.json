@@ -612,7 +612,7 @@
     },
     "messages": {
       "version_error": "Błąd pobierania wersji",
-      "update_available": "Dostępna aktualizacja — {{version}}"
+      "update_available": "Aktualizacja do wersji {{version}} jest dostępna"
     }
   }
 }

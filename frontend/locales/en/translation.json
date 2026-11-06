@@ -611,7 +611,7 @@
     },
     "messages": {
       "version_error": "Could not load version",
-      "update_available": "Dostępna aktualizacja — {{version}}"
+      "update_available": "Update to version {version}} is available"
     }
   }
 }
