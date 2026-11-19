@@ -608,6 +608,27 @@ svg[data-lucide="loader-circle"] {
 	color: var(--text-secondary);
 }
 
+/* Kontener na komentarze w panelu Informacje o utworze */
+.list-item__comment-list {
+	display: flex;
+	flex-direction: column;
+	gap: calc(var(--spacing) * 2);
+	margin-top: calc(var(--spacing) * 1.5);
+	padding: calc(var(--spacing) * 2.5);
+	background-color: color-mix(in oklab, var(--color-white) 3%, transparent);
+	border: 1px solid var(--color-rim-subtle);
+	border-radius: 10px;
+	max-height: 200px;
+	overflow-y: auto;
+}
+.list-item__comment {
+	font-size: 0.8rem;
+	line-height: 1.5;
+	color: var(--text-secondary);
+	word-wrap: break-word;
+	white-space: pre-wrap;
+}
+
 .slider-with-default {
 	position: relative;
 	display: inline-flex;
@@ -1597,6 +1618,25 @@ body.modal-active {
 	max-height: 0;
 	overflow: hidden;
 	transition: max-height 0.25s ease;
+}
+
+/* Accordiony w prawej kolumnie — scrollują gdy treść się nie mieści */
+#rightColumn .accordion-content {
+	overflow-y: auto;
+}
+#mainContainer-tab-songInfo .accordion-content {
+	--scroll-fade-top: #000;
+	--scroll-fade-bottom: #000;
+	-webkit-mask-image:
+		linear-gradient(to bottom, var(--scroll-fade-top) 0, #000 1.5rem, #000 calc(100% - 1.5rem), var(--scroll-fade-bottom) 100%);
+	mask-image:
+		linear-gradient(to bottom, var(--scroll-fade-top) 0, #000 1.5rem, #000 calc(100% - 1.5rem), var(--scroll-fade-bottom) 100%);
+}
+#mainContainer-tab-songInfo .accordion-content:not(.scrolled-to-top) {
+	--scroll-fade-top: transparent;
+}
+#mainContainer-tab-songInfo .accordion-content:not(.scrolled-to-bottom) {
+	--scroll-fade-bottom: transparent;
 }
 
 /* ==================== PANEL TEKST UTWORU ==================== */

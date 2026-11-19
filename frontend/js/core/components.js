@@ -438,7 +438,84 @@ document.querySelectorAll('.accordion-header').forEach(header => {
         cancelAnimationFrame(heightUpdateFrame);
         heightUpdateFrame = requestAnimationFrame(() => {
             if (item.classList.contains('open')) {
-                content.style.maxHeight = content.scrollHeight + 'px';
+                let h = content.scrollHeight;
+                // Accordiony w prawej kolumnie — mierzymy każdy .view jako całość
+                const rightCol = document.getElementById('rightColumn');
+                if (rightCol && item.closest('#rightColumn')) {
+                    // Wszystkie .view w kolumnie
+                    const views = Array.from(rightCol.querySelectorAll('.view'));
+                    const openViews = views.filter(v => v.classList.contains('open'));
+                    const closedViews = views.filter(v => !v.classList.contains('open'));
+
+                    if (openViews.length > 0) {
+                        // Dostępna przestrzeń = cała kolumna minus przyciski na górze
+                        const colRect = rightCol.getBoundingClientRect();
+                        const buttons = rightCol.querySelector('#rightColumnButtons');
+                        let usedHeight = 0;
+                        if (buttons) usedHeight += buttons.getBoundingClientRect().height;
+
+                        // Odejmij zamknięte accordiony (mierzone jako całość)
+                        closedViews.forEach(v => {
+                            usedHeight += v.getBoundingClientRect().height;
+                        });
+
+                        const available = colRect.height - usedHeight;
+
+                        // Zbierz informacje o otwartych accordionach
+                        // Dla każdego mierzymy: pełny boundingRect (header + padding) + scrollHeight content
+                        const viewInfo = [];
+                        let totalNeeded = 0;
+                        openViews.forEach(v => {
+                            const hdr = v.querySelector('.accordion-header');
+                            const cnt = v.querySelector('.accordion-content');
+                            if (hdr && cnt) {
+                                // getComputedStyle dla padding-top i padding-bottom .view
+                                const viewStyle = window.getComputedStyle(v);
+                                const paddingTop = parseFloat(viewStyle.paddingTop) || 0;
+                                const paddingBottom = parseFloat(viewStyle.paddingBottom) || 0;
+
+                                // Wysokość "szkieletu" .view = padding-top + header + padding-bottom
+                                const headerRect = hdr.getBoundingClientRect();
+                                const skeletonH = paddingTop + headerRect.height + paddingBottom;
+
+                                // scrollHeight content (treść w pełni rozwinięta)
+                                const contentH = cnt.scrollHeight;
+
+                                // Pełna wysokość .view gdy otwarty = skeleton + content
+                                const totalH = skeletonH + contentH;
+
+                                viewInfo.push({ view: v, content: cnt, skeletonH, contentH, totalH });
+                                totalNeeded += totalH;
+                            }
+                        });
+
+                        if (totalNeeded > available && available > 0) {
+                            // Treść się nie mieści — daj pełną wysokość accordionom które się mieszczą,
+                            // a resztę przestrzeni daj temu, który się nie mieści
+                            let remaining = available;
+                            viewInfo.forEach(vi => {
+                                if (vi.totalH <= available) {
+                                    // Mieści się — daj pełną wysokość contentowi
+                                    vi.content.style.maxHeight = vi.contentH + 'px';
+                                    remaining -= vi.totalH;
+                                } else {
+                                    // Nie mieści się — content = reszta minus skeleton
+                                    const contentMax = Math.ceil(Math.max(0, remaining - vi.skeletonH));
+                                    vi.content.style.maxHeight = contentMax + 'px';
+                                    remaining = 0;
+                                }
+                            });
+                        } else {
+                            // Wszystko się mieści — daj pełną wysokość wszystkim
+                            viewInfo.forEach(vi => {
+                                vi.content.style.maxHeight = vi.contentH + 'px';
+                            });
+                        }
+                        return;
+                    }
+                }
+                // Fallback: pojedynczy accordion bez skalowania
+                content.style.maxHeight = h + 'px';
             }
         });
     };

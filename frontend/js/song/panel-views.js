@@ -517,54 +517,119 @@ const refreshPanelContent = {
             const releasedValue = metadata.released || currentSong.year || null;
             const transpositionValue = metadata.transposition != null ? (metadata.transposition > 0 ? `+${metadata.transposition}` : String(metadata.transposition)) : null;
 
-            const items = [
-                { icon: 'tag',          value: tagsValue },
-                { icon: 'gauge',        value: currentSong.bpm ? i18n.t('songs.bpm_value', { bpm: currentSong.bpm }) : null },
-                { icon: 'hash',         value: currentSong.key || null },
-                { icon: 'ruler',        value: currentSong.timeSignature || null },
-                { icon: 'user-round',   value: authorsValue },
-                { icon: 'calendar',     value: releasedValue },
-                { icon: 'cloud-upload', value: currentSong.uploadedByUsername ? currentSong.uploadedByUsername : null },
-                { icon: 'disc-3',       value: metadata.album || null },
-                { icon: 'building-2',   value: metadata.publisher || null },
-                { icon: 'copyright',    value: metadata.copyright || null },
-                { icon: 'barcode',      value: metadata.ccliNo || null },
-                { icon: 'book-open',    value: metadata.songbooks && metadata.songbooks.length ? metadata.songbooks.map(sb => sb.entry ? `${sb.name} #${sb.entry}` : sb.name).join(', ') : null },
-                { icon: 'sliders-vertical', value: transpositionValue },
-                { icon: 'music',        value: metadata.capo ? i18n.t('songs.metadata.capo_value', { capo: metadata.capo }) : null },
-                { icon: 'clock',        value: metadata.duration || null },
-                { icon: 'gauge-circle', value: metadata.tempoText || null },
-                { icon: 'git-branch',   value: metadata.variant || null },
-                { icon: 'tag',          value: metadata.customVersion || null },
-                { icon: 'languages',    value: metadata.lang || null },
-                { icon: 'heading',      value: metadata.sortTitle || null },
-                { icon: 'book-text',    value: metadata.titles && metadata.titles.length ? metadata.titles.map(t => t.text).join(', ') : null },
-                { icon: 'message-square', value: metadata.comments && metadata.comments.length ? metadata.comments.join(', ') : null },
-            ];
+            // Grupuj metadane w kategorie zgodne z METADATA_SECTIONS + sekcja "Podstawowe"
+            const categoryItems = {
+                basic: [
+                    { icon: 'tag',          label: 'songs.tags_label',         value: tagsValue },
+                    { icon: 'gauge',        label: 'songs.metadata.bpm',       value: currentSong.bpm ? i18n.t('songs.bpm_value', { bpm: currentSong.bpm }) : null },
+                    { icon: 'hash',         label: 'songs.metadata.key',       value: currentSong.key || null },
+                    { icon: 'ruler',        label: 'songs.metadata.timeSignature', value: currentSong.timeSignature || null },
+                    { icon: 'cloud-upload', label: 'songs.metadata.uploaded_by', value: currentSong.uploadedByUsername || null },
+                ],
+                people: [
+                    { icon: 'user-round',   label: 'songs.metadata.authors',   value: authorsValue },
+                ],
+                release: [
+                    { icon: 'calendar',     label: 'songs.metadata.released',  value: releasedValue },
+                    { icon: 'disc-3',       label: 'songs.metadata.album',     value: metadata.album || null },
+                    { icon: 'building-2',   label: 'songs.metadata.publisher', value: metadata.publisher || null },
+                    { icon: 'copyright',    label: 'songs.metadata.copyright', value: metadata.copyright || null },
+                    { icon: 'barcode',      label: 'songs.metadata.ccliNo',    value: metadata.ccliNo || null },
+                    { icon: 'book-open',    label: 'songs.metadata.songbooks', value: metadata.songbooks && metadata.songbooks.length ? metadata.songbooks.map(sb => sb.entry ? `${sb.name} #${sb.entry}` : sb.name).join(', ') : null },
+                ],
+                performance: [
+                    { icon: 'sliders-vertical', label: 'songs.metadata.transposition', value: transpositionValue },
+                    { icon: 'music',        label: 'songs.metadata.capo',      value: metadata.capo ? i18n.t('songs.metadata.capo_value', { capo: metadata.capo }) : null },
+                    { icon: 'clock',        label: 'songs.metadata.duration',  value: metadata.duration || null },
+                    { icon: 'gauge-circle', label: 'songs.metadata.tempoText', value: metadata.tempoText || null },
+                    { icon: 'git-branch',   label: 'songs.metadata.variant',   value: metadata.variant || null },
+                    { icon: 'tag',          label: 'songs.metadata.customVersion', value: metadata.customVersion || null },
+                ],
+                other: [
+                    { icon: 'languages',    label: 'songs.metadata.lang',      value: metadata.lang || null },
+                    { icon: 'heading',      label: 'songs.metadata.sortTitle', value: metadata.sortTitle || null },
+                    { icon: 'book-text',    label: 'songs.metadata.titles',    value: metadata.titles && metadata.titles.length ? metadata.titles.map(t => t.text).join(', ') : null },
+                    { icon: 'message-square', label: 'songs.metadata.comments', value: metadata.comments && metadata.comments.length ? metadata.comments : null },
+                ],
+            };
 
-            if (!items.some(i => i.value)) {
+            const categoryOrder = ['basic', 'people', 'release', 'performance', 'other'];
+            const categoryTitleKey = cat => `songs.metadata.section_${cat}`;
+
+            // Sprawdź, czy jest choć jedna wartość
+            const allValid = categoryOrder.flatMap(cat => categoryItems[cat].filter(i => i.value));
+            if (!allValid.length) {
                 const noInfo = document.createElement('div');
                 noInfo.className = 'flex items-center justify-center h-full text-[1.5rem]';
                 noInfo.style.color = 'var(--color-muted)';
                 noInfo.textContent = i18n.t('songs.no_info');
                 songInfo_mainView.appendChild(noInfo);
             } else {
-                items.forEach(({ icon, value }) => {
-                    if (!value) return;
-                    const el = document.createElement('div');
-                    el.className = 'flex items-center gap-2 px-3.5 py-2 bg-surface border border-rim rounded-xl text-[0.85rem] text-fg transition-all hover:bg-accent/10 hover:border-accent [&_svg]:w-[18px] [&_svg]:h-[18px] [&_svg]:text-accent [&_svg]:shrink-0 [&_p]:m-0 [&_p]:font-medium [&_p]:select-text';
-                    const iconEl = document.createElement('i');
-                    iconEl.setAttribute('data-lucide', icon);
-                    const p = document.createElement('p');
-                    p.textContent = value;
-                    el.appendChild(iconEl);
-                    el.appendChild(p);
-                    songInfo_mainView.appendChild(el);
+                categoryOrder.forEach(cat => {
+                    const valid = categoryItems[cat].filter(i => i.value);
+                    if (!valid.length) return;
+
+                    const listGroup = document.createElement('div');
+                    listGroup.className = 'list-group';
+
+                    const titleEl = document.createElement('span');
+                    titleEl.className = 'list-group__title';
+                    titleEl.textContent = i18n.t(categoryTitleKey(cat));
+                    listGroup.appendChild(titleEl);
+
+                    valid.forEach(({ icon, label, value }) => {
+                        const listItem = document.createElement('div');
+                        listItem.className = 'list-item';
+
+                        const iconWrapper = document.createElement('div');
+                        iconWrapper.className = 'list-item__icon';
+                        const iconEl = document.createElement('i');
+                        iconEl.setAttribute('data-lucide', icon);
+                        iconWrapper.appendChild(iconEl);
+
+                        const textWrapper = document.createElement('div');
+                        textWrapper.className = 'list-item__text';
+                        const title = document.createElement('span');
+                        title.className = 'list-item__title';
+                        title.textContent = i18n.t(label);
+
+                        // Komentarze jako tablica — renderuj jako osobne akapity w kontenerze
+                        if (Array.isArray(value)) {
+                            const commentContainer = document.createElement('div');
+                            commentContainer.className = 'list-item__comment-list';
+                            value.forEach(comment => {
+                                const p = document.createElement('p');
+                                p.className = 'list-item__comment';
+                                p.textContent = comment;
+                                commentContainer.appendChild(p);
+                            });
+                            textWrapper.appendChild(title);
+                            textWrapper.appendChild(commentContainer);
+                        } else {
+                            const desc = document.createElement('span');
+                            desc.className = 'list-item__desc';
+                            desc.textContent = value;
+                            textWrapper.appendChild(title);
+                            textWrapper.appendChild(desc);
+                        }
+
+                        listItem.appendChild(iconWrapper);
+                        listItem.appendChild(textWrapper);
+                        listGroup.appendChild(listItem);
+                    });
+
+                    songInfo_mainView.appendChild(listGroup);
                 });
             }
         }
 
         lucide.createIcons({ nodes: [viewBody] });
+
+        // Scroll fade top/bottom jak w songlist view body
+        const accordionContent = view.querySelector('.accordion-content');
+        if (accordionContent) {
+            setupScrollFade(accordionContent, accordionContent);
+        }
     },
 
     audio() {
