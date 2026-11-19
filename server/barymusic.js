@@ -131,6 +131,19 @@ function createVersionService({ version, buildInfo = {} } = {}) {
 }
 
 function readBuildInfo(filePath = path.join(__dirname, 'build-info.json')) {
+	const generatorPath = path.join(__dirname, '..', 'scripts', 'generate-build-info.js');
+	if (fs.existsSync(generatorPath)) {
+		try {
+			const { execFileSync } = require('node:child_process');
+			execFileSync(process.execPath, [generatorPath, filePath], {
+				cwd: path.join(__dirname, '..'),
+				stdio: 'pipe',
+				timeout: 10000,
+			});
+		} catch {
+			// If regeneration fails, fall back to reading the existing file
+		}
+	}
 	try {
 		const buildInfo = JSON.parse(fs.readFileSync(filePath, 'utf8'));
 		return buildInfo && typeof buildInfo === 'object' && !Array.isArray(buildInfo) ? buildInfo : {};
