@@ -511,15 +511,35 @@ const refreshPanelContent = {
             songInfo_mainView.innerHTML = '';
             if (titleRow) songInfo_mainView.appendChild(titleRow);
 
+            const metadata = getSongMetadata(currentSong);
             const tagsValue = Array.isArray(currentSong.tags) && currentSong.tags.length ? currentSong.tags.join(', ') : null;
+            const authorsValue = metadataAuthorNames(currentSong).join(', ') || null;
+            const releasedValue = metadata.released || currentSong.year || null;
+            const transpositionValue = metadata.transposition != null ? (metadata.transposition > 0 ? `+${metadata.transposition}` : String(metadata.transposition)) : null;
+
             const items = [
                 { icon: 'tag',          value: tagsValue },
                 { icon: 'gauge',        value: currentSong.bpm ? i18n.t('songs.bpm_value', { bpm: currentSong.bpm }) : null },
                 { icon: 'hash',         value: currentSong.key || null },
                 { icon: 'ruler',        value: currentSong.timeSignature || null },
-                { icon: 'user-round',   value: metadataAuthorNames(currentSong).join(', ') || null },
-                { icon: 'calendar',     value: getSongMetadata(currentSong).released || currentSong.year || null },
+                { icon: 'user-round',   value: authorsValue },
+                { icon: 'calendar',     value: releasedValue },
                 { icon: 'cloud-upload', value: currentSong.uploadedByUsername ? currentSong.uploadedByUsername : null },
+                { icon: 'disc-3',       value: metadata.album || null },
+                { icon: 'building-2',   value: metadata.publisher || null },
+                { icon: 'copyright',    value: metadata.copyright || null },
+                { icon: 'barcode',      value: metadata.ccliNo || null },
+                { icon: 'book-open',    value: metadata.songbooks && metadata.songbooks.length ? metadata.songbooks.map(sb => sb.entry ? `${sb.name} #${sb.entry}` : sb.name).join(', ') : null },
+                { icon: 'sliders-vertical', value: transpositionValue },
+                { icon: 'music',        value: metadata.capo ? i18n.t('songs.metadata.capo_value', { capo: metadata.capo }) : null },
+                { icon: 'clock',        value: metadata.duration || null },
+                { icon: 'gauge-circle', value: metadata.tempoText || null },
+                { icon: 'git-branch',   value: metadata.variant || null },
+                { icon: 'tag',          value: metadata.customVersion || null },
+                { icon: 'languages',    value: metadata.lang || null },
+                { icon: 'heading',      value: metadata.sortTitle || null },
+                { icon: 'book-text',    value: metadata.titles && metadata.titles.length ? metadata.titles.map(t => t.text).join(', ') : null },
+                { icon: 'message-square', value: metadata.comments && metadata.comments.length ? metadata.comments.join(', ') : null },
             ];
 
             if (!items.some(i => i.value)) {

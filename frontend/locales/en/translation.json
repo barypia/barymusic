@@ -180,6 +180,7 @@
     "no_info": "No song information",
     "search_title": "Search songs",
     "bpm_value": "{{bpm}} BPM",
+    "capo_value": "Capo {{capo}}",
     "filter_visibility": "Visibility",
     "filter_tags": "Tags",
     "filter_key": "Key",

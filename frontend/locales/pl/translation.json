@@ -181,6 +181,7 @@
     "no_info": "Brak informacji o utworze",
     "search_title": "Szukaj utworów",
     "bpm_value": "{{bpm}} BPM",
+    "capo_value": "Capo {{capo}}",
     "filter_visibility": "Widoczność",
     "filter_tags": "Tagi",
     "filter_key": "Tonacja",
