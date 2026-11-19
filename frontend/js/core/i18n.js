@@ -82,6 +82,9 @@ const i18n = {
             if (typeof renderVersionInfo === 'function') {
                 renderVersionInfo();
             }
+            requestAnimationFrame(() => {
+                if (typeof syncSongInfoHeaderOverflow === 'function') syncSongInfoHeaderOverflow();
+            });
         });
     },
 

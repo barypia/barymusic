@@ -604,8 +604,10 @@
 				<div class="view-header accordion-header">
 					<span class="view-title" data-i18n="panels.info_title"></span>
 					<div class="view-header-controls hidden!">
-						<button class="btn small" data-action="song-edit" data-i18n-title="songs.edit" onclick="editSong()"><i data-lucide="pencil"></i></button>
-						<button class="btn small danger hidden" data-action="song-delete" data-i18n-title="songs.delete" onclick="deleteSong()"><i data-lucide="trash"></i></button>
+						<button class="btn small hidden!" data-header-action data-action="song-metadata" data-i18n-title="songs.metadata.modal_title" onclick="openSongMetadataModal()"><i data-lucide="list-tree"></i></button>
+						<button class="btn small" data-header-action data-action="song-edit" data-i18n-title="songs.edit" onclick="editSong()"><i data-lucide="pencil"></i></button>
+						<button class="btn small danger hidden" data-header-action data-action="song-delete" data-i18n-title="songs.delete" onclick="deleteSong()"><i data-lucide="trash"></i></button>
+						<button class="btn small hidden!" data-action="song-header-menu" data-i18n-title="songs.more_options" data-i18n-aria-label="songs.more_options" aria-haspopup="menu" aria-expanded="false"><i data-lucide="ellipsis"></i></button>
 					</div>
 				</div>
 				<div class="accordion-content pl-2" data-view="songInfo">

@@ -830,10 +830,9 @@ svg[data-lucide="loader-circle"] {
 	border: none;
 	border-radius: 8px;
 	cursor: pointer;
-	transition: color 0.15s, background 0.15s;
+	transition: color 0.15s, background 0.15s, font-weight 0.15s ease;
 	text-align: left;
 	display: block;
-	transition: font-weight 0.1s ease;
 }
 .modal-tab:hover {
 	color: var(--text-primary);
@@ -1328,6 +1327,7 @@ body.modal-active {
 	text-transform: uppercase;
     letter-spacing: 0.025em;
 	padding-left: 0.25rem;
+	min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2191,7 +2191,6 @@ body.modal-active {
 	align-items: center;
 	gap: 8px;
 	border-radius: 6px;
-	padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
 	background-color: color-mix(in oklab, var(--color-white) 10%, transparent);
 	color: var(--text-secondary);
 	font-size: 0.7rem;

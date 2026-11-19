@@ -418,7 +418,7 @@ function showToast(type = 'info', message, subtitle = null, duration = null) {
     };
 
     if (!duration) {
-        if (type == 'success') {
+        if (type === 'success') {
             duration = 3000;
         } else {
             duration = 5000;
@@ -464,9 +464,15 @@ document.querySelectorAll('.accordion-header').forEach(header => {
             content.style.maxHeight = null;
             header.querySelector('.view-header-controls').classList.add('hidden!')
         } else {
+            if (header.closest('#mainContainer-tab-songInfo') && typeof syncSongInfoHeaderOverflow === 'function') {
+                syncSongInfoHeaderOverflow();
+            }
             item.classList.add('open');
             syncOpenHeight();
             header.querySelector('.view-header-controls').classList.remove('hidden!')
+            if (header.closest('#mainContainer-tab-songInfo') && typeof syncSongInfoHeaderOverflow === 'function') {
+                requestAnimationFrame(syncSongInfoHeaderOverflow);
+            }
         }
     });
 });

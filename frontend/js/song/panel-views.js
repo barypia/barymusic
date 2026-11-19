@@ -238,6 +238,97 @@ window.addEventListener('i18nReady', initStandaloneScrollFades);
 
 // Context menu - song info
 
+function _songInfoHeaderActionAvailable(btn) {
+	if (!btn) return false;
+	if (btn.dataset.available === '1' || btn.dataset.available === '0') return btn.dataset.available === '1';
+	return !btn.classList.contains('hidden') && !btn.classList.contains('hidden!');
+}
+
+function _markSongInfoHeaderAction(btn) {
+	if (!btn) return;
+	btn.dataset.available = (!btn.classList.contains('hidden') && !btn.classList.contains('hidden!')) ? '1' : '0';
+}
+
+function _measureSongInfoHeaderActions(controls, nodes) {
+	if (!nodes.length) return 0;
+	const probe = document.createElement('div');
+	probe.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;display:flex;align-items:center;left:0;top:0;';
+	probe.style.gap = getComputedStyle(controls).gap || '3px';
+	nodes.forEach(node => {
+		const clone = node.cloneNode(true);
+		clone.classList.remove('hidden', 'hidden!');
+		clone.style.display = 'inline-flex';
+		probe.appendChild(clone);
+	});
+	document.body.appendChild(probe);
+	const width = probe.getBoundingClientRect().width;
+	probe.remove();
+	return width;
+}
+
+function syncSongInfoHeaderOverflow() {
+	const header = document.querySelector('#mainContainer-tab-songInfo .view-header');
+	if (!header) return;
+	const title = header.querySelector('.view-title');
+	const controls = header.querySelector('.view-header-controls');
+	const menuBtn = controls?.querySelector('[data-action="song-header-menu"]');
+	if (!title || !controls || !menuBtn) return;
+
+	const actions = [...controls.querySelectorAll('[data-header-action]')];
+	const availableActions = actions.filter(_songInfoHeaderActionAvailable);
+	if (!availableActions.length) {
+		setElementDisplay(menuBtn, false);
+		actions.forEach(btn => setElementDisplay(btn, false));
+		return;
+	}
+
+	const style = getComputedStyle(header);
+	const available = header.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+	const collapsed = title.scrollWidth + _measureSongInfoHeaderActions(controls, availableActions) > available + 1;
+	setElementDisplay(menuBtn, collapsed);
+	actions.forEach(btn => setElementDisplay(btn, _songInfoHeaderActionAvailable(btn) && !collapsed));
+}
+
+function _openSongInfoHeaderMenu(menuBtn) {
+	const header = menuBtn.closest('.view-header');
+	const icons = {
+		'song-metadata': 'list-tree',
+		'song-edit': 'pencil',
+		'song-delete': 'trash',
+	};
+	const labels = {
+		'song-metadata': () => i18n.t('songs.metadata.modal_title'),
+		'song-edit': () => i18n.t('songs.edit'),
+		'song-delete': () => i18n.t('songs.delete'),
+	};
+	const items = [...header.querySelectorAll('[data-header-action]')]
+		.filter(_songInfoHeaderActionAvailable)
+		.map(btn => ({
+			icon: icons[btn.dataset.action],
+			label: labels[btn.dataset.action]?.() || btn.title,
+			danger: btn.classList.contains('danger'),
+			action: () => btn.click(),
+		}));
+	showTriggeredContextMenu(items, menuBtn);
+}
+
+function initSongInfoHeaderOverflow() {
+	const header = document.querySelector('#mainContainer-tab-songInfo .view-header');
+	const menuBtn = header?.querySelector('[data-action="song-header-menu"]');
+	if (!header || !menuBtn || menuBtn.dataset.bound === '1') return;
+	menuBtn.dataset.bound = '1';
+	header.querySelectorAll('[data-header-action]').forEach(btn => {
+		if (!btn.dataset.available) _markSongInfoHeaderAction(btn);
+	});
+	menuBtn.addEventListener('click', () => _openSongInfoHeaderMenu(menuBtn));
+	if (typeof ResizeObserver === 'function') {
+		const observer = new ResizeObserver(() => syncSongInfoHeaderOverflow());
+		observer.observe(header);
+	}
+	document.fonts?.ready.then(() => syncSongInfoHeaderOverflow());
+	syncSongInfoHeaderOverflow();
+}
+
 function _openSongInfoContextMenu(pos) {
 	const canEdit = currentIsAdmin || (currentUser && currentUser === currentSong?.uploadedByUsername);
 
@@ -283,7 +374,6 @@ const refreshPanelContent = {
             setElementDisplay(viewBody.querySelector('.view-header-controls'), false);
             viewer.innerHTML = '';
             removeContextMenu(sheetViewer);
-            return;
         } else {
             updateFitBtn();
 
@@ -338,7 +428,7 @@ const refreshPanelContent = {
         }
         
         const hasChords = currentSong?.lyrics?.some(l =>
-            l.hasChords || /\[[A-GHa-gh][♯♭#b]?(?:m|maj|dim|aug)?[0-9]*\]/.test(l.text)
+            l.hasChords || /\[[A-GHa-gh][♯♭#b]?(?:m|maj|dim|aug)?[0-9]*]/.test(l.text)
         );
         const hasTimestamps = currentSong?.lyrics?.some(l => l.timestamp !== undefined && l.timestamp !== null);
 
@@ -378,20 +468,31 @@ const refreshPanelContent = {
         const viewHeader = view.querySelector('.view-header');
         const viewBody = view.querySelector('[data-view="songInfo"]');
 
+        const metadataBtn = viewHeader.querySelector('[data-action="song-metadata"]');
         const editBtn = viewHeader.querySelector('[data-action="song-edit"]');
         const deleteBtn = viewHeader.querySelector('[data-action="song-delete"]');
 
         if (!currentSong) {
             setElementDisplay('#songInfo-mainView', false);
             setElementDisplay('#songInfo-noSong', true);
+            setElementDisplay(metadataBtn, false);
             setElementDisplay(editBtn, false);
             setElementDisplay(deleteBtn, false);
+            _markSongInfoHeaderAction(metadataBtn);
+            _markSongInfoHeaderAction(editBtn);
+            _markSongInfoHeaderAction(deleteBtn);
+            syncSongInfoHeaderOverflow();
             return;
         } else {
             setElementDisplay('#songInfo-mainView', true);
             setElementDisplay('#songInfo-noSong', false)
+            setElementDisplay(metadataBtn, true);
             updateAddSongButtonVisibility(editBtn, currentSong?.uploadedBy ?? null);
             updateAddSongButtonVisibility(deleteBtn, currentSong?.uploadedBy ?? null);
+            _markSongInfoHeaderAction(metadataBtn);
+            _markSongInfoHeaderAction(editBtn);
+            _markSongInfoHeaderAction(deleteBtn);
+            syncSongInfoHeaderOverflow();
         }
 
         const titleEl = viewBody.querySelector('#songInfo-Title');
@@ -440,13 +541,6 @@ const refreshPanelContent = {
                     el.appendChild(p);
                     songInfo_mainView.appendChild(el);
                 });
-
-                const metadataBtn = document.createElement('button');
-                metadataBtn.type = 'button';
-                metadataBtn.className = 'btn secondary justify-center';
-                metadataBtn.onclick = () => openSongMetadataModal();
-                metadataBtn.innerHTML = `<i data-lucide="list-tree"></i><span>${escapeHtml(i18n.t('songs.metadata.modal_title'))}</span>`;
-                songInfo_mainView.appendChild(metadataBtn);
             }
         }
 
@@ -626,7 +720,6 @@ const refreshPanelContent = {
     socket(users) {
         const view = document.getElementById('mainContainer-tab-socket');
         const viewHeader = view.querySelector('.view-header');
-        const viewBody = view.querySelector('[data-view="socket"]');
 
         const channelExitBtn = viewHeader.querySelector('[data-action="channel-exit"]');
         channelExitBtn.onclick = () => channelExit();
@@ -647,15 +740,14 @@ const refreshPanelContent = {
                 const pingValue = document.getElementById('pingValue');
                 pingValue.textContent = socketPing ? `${socketPing.toFixed(0)} ms` : `? ms`;
 
-                const pingRateColor = (!socketPing) ? 'text-faint' :
-                        socketPing < 50 ? 'text-green-400' :
+                pingValue.className = (!socketPing) ? 'text-faint' :
+                    socketPing < 50 ? 'text-green-400' :
                         socketPing < 100 ? 'text-yellow-300' :
-                        socketPing < 200 ? 'text-orange-400' :
-                        'text-red-400';
-                pingValue.className = pingRateColor;
+                            socketPing < 200 ? 'text-orange-400' :
+                                'text-red-400';
             }
 
-            if (users == undefined) return;
+            if (users === undefined) return;
             const usersList = document.getElementById('channelUsersList');
             if (usersList) {
                 usersList.innerHTML = '';
@@ -671,3 +763,5 @@ const refreshPanelContent = {
         }
     }
 };
+
+initSongInfoHeaderOverflow();
