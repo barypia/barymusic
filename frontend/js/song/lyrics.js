@@ -387,6 +387,37 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+function setLyricScrollbarCollapsed(collapsed, instant = false) {
+    const textView = document.getElementById('mainContainer-tab-text');
+    if (!textView) return;
+
+    textView.querySelectorAll('[data-lyrics-grid]').forEach(grid => {
+        if (grid._sbAnimCleanup) grid._sbAnimCleanup();
+        grid.style.transition = '';
+        grid.style.paddingRight = '';
+    });
+
+    if (instant) {
+        textView.style.transition = 'none';
+    }
+    textView.classList.toggle('lyrics-sb-collapsed', collapsed);
+    textView.classList.toggle('lyrics-scrollbar-off', collapsed);
+    if (instant) {
+        textView.offsetWidth;
+        textView.style.transition = '';
+    }
+}
+
+function syncLyricScrollbarForContent() {
+    const textView = document.getElementById('mainContainer-tab-text');
+    const grid = textView?.querySelector('[data-lyrics-grid]');
+    if (!grid) return;
+
+    const needsScroll = grid.scrollHeight > grid.clientHeight + 1;
+    // No overflow: expand immediately. Otherwise restore user preference.
+    setLyricScrollbarCollapsed(needsScroll ? !lyricScroll : true, true);
+}
+
 function toggleLyricScroll() {
     lyricScroll = !lyricScroll;
     const textView = document.getElementById('mainContainer-tab-text');
