@@ -207,6 +207,9 @@
   .pointer-events-none {
     pointer-events: none;
   }
+  .collapse {
+    visibility: collapse;
+  }
   .visible {
     visibility: visible;
   }
@@ -242,12 +245,6 @@
   }
   .right-1\! {
     right: var(--spacing) !important;
-  }
-  .right-3\! {
-    right: calc(var(--spacing) * 3) !important;
-  }
-  .right-5\! {
-    right: calc(var(--spacing) * 5) !important;
   }
   .bottom-0 {
     bottom: 0px;
@@ -359,6 +356,9 @@
   }
   .hidden\! {
     display: none !important;
+  }
+  .inline {
+    display: inline;
   }
   .inline-flex {
     display: inline-flex;
@@ -616,9 +616,6 @@
   }
   .overflow-y-auto {
     overflow-y: auto;
-  }
-  .overflow-y-scroll {
-    overflow-y: scroll;
   }
   .rounded-2xl {
     border-radius: var(--radius-2xl);
@@ -1267,6 +1264,11 @@
 }
 body {
   font-family: "Noto Sans", system-ui;
+}
+@property --lyrics-sb-width {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 10px;
 }
 ::-webkit-scrollbar {
   width: 10px;
@@ -2375,6 +2377,28 @@ body.modal-active {
   box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.25);
   backdrop-filter: var(--blur-filter);
   -webkit-backdrop-filter: var(--blur-filter);
+}
+#mainContainer-tab-text {
+  --lyrics-sb-width: 10px;
+  --lyrics-sb-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --lyrics-sb-duration: 160ms;
+  transition: --lyrics-sb-width var(--lyrics-sb-duration) var(--lyrics-sb-ease);
+}
+#mainContainer-tab-text.lyrics-sb-collapsed {
+  --lyrics-sb-width: 0px;
+}
+#mainContainer-tab-text .sheet-floating-controls {
+  right: calc(0.75rem + var(--lyrics-sb-width));
+}
+#mainContainer-tab-text [data-lyrics-grid] {
+  overflow-y: scroll;
+}
+#mainContainer-tab-text.lyrics-scrollbar-off [data-lyrics-grid] {
+  overflow-y: hidden;
+}
+#mainContainer-tab-text [data-scroll-fade] {
+  -webkit-mask-image: linear-gradient(to left, #000 0 var(--lyrics-sb-width), transparent var(--lyrics-sb-width)),	linear-gradient(to bottom, var(--scroll-fade-top) 0, #000 1.5rem, #000 calc(100% - 1.5rem), var(--scroll-fade-bottom) 100%);
+  mask-image: linear-gradient(to left, #000 0 var(--lyrics-sb-width), transparent var(--lyrics-sb-width)),	linear-gradient(to bottom, var(--scroll-fade-top) 0, #000 1.5rem, #000 calc(100% - 1.5rem), var(--scroll-fade-bottom) 100%);
 }
 .sheet-floating-controls [data-action="zoom-reset"] {
   max-width: 0;
@@ -3961,6 +3985,7 @@ html.no-animations *, html.no-animations *::before, html.no-animations *::after 
 @layer properties {
   @supports ((-webkit-hyphens: none) and (not (margin-trim: block))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
     :root, :host {
+      --lyrics-sb-width: 10px;
       --scroll-fade-top: #000;
       --scroll-fade-top-middle: #000;
       --scroll-fade-bottom: #000;

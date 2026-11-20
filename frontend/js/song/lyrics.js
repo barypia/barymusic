@@ -389,15 +389,95 @@ document.addEventListener('keydown', (e) => {
 
 function toggleLyricScroll() {
     lyricScroll = !lyricScroll;
-    const controls = document.getElementById('mainContainer-tab-text').querySelector('.sheet-floating-controls');
-    controls.classList.toggle('right-5!', lyricScroll);
-    controls.classList.toggle('right-3!', !lyricScroll);
-    document.querySelectorAll('[data-lyrics-grid]').forEach(grid => {
-        grid.classList.toggle('overflow-y-scroll', lyricScroll);
-        grid.classList.toggle('overflow-hidden!', !lyricScroll);
+    const textView = document.getElementById('mainContainer-tab-text');
+    const duration = 160;
+    const ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
+    const grids = document.querySelectorAll('[data-lyrics-grid]');
+    const show = lyricScroll;
+
+    const setCollapsed = (collapsed) => {
+        textView?.classList.toggle('lyrics-sb-collapsed', collapsed);
+        textView?.classList.toggle('lyrics-scrollbar-off', collapsed);
+    };
+
+    if (!grids.length) {
+        setCollapsed(!show);
+    }
+
+    grids.forEach(grid => {
+        if (grid._sbAnimCleanup) grid._sbAnimCleanup();
+
+        const fromPad = parseFloat(getComputedStyle(grid).paddingRight) || 0;
+        const measured = grid.offsetWidth - grid.clientWidth;
+        if (measured > 0) grid._lastSbWidth = measured;
+        const sb = measured > 0 ? measured : (grid._lastSbWidth || 0);
+
+        // Overlay scrollbars: no layout shift
+        if (sb <= 0) {
+            setCollapsed(!show);
+            return;
+        }
+
+        let finished = false;
+        let endTimer = 0;
+        let showSbTimer = 0;
+        const padFrom = show ? fromPad : fromPad + sb;
+        const padTo = show ? fromPad + sb : fromPad;
+
+        const clearInline = () => {
+            grid.style.transition = '';
+            grid.style.paddingRight = '';
+        };
+
+        const stop = () => {
+            if (finished) return;
+            finished = true;
+            clearTimeout(endTimer);
+            clearTimeout(showSbTimer);
+            grid.removeEventListener('transitionend', onEnd);
+            grid._sbAnimCleanup = null;
+            clearInline();
+        };
+
+        grid._sbAnimCleanup = stop;
+
+        const onEnd = (e) => {
+            if (finished || (e.propertyName && e.propertyName !== 'padding-right')) return;
+            stop();
+        };
+
+        grid.style.transition = 'none';
+        grid.style.paddingRight = `${padFrom}px`;
+        textView?.classList.add('lyrics-scrollbar-off');
+        textView?.classList.toggle('lyrics-sb-collapsed', !show);
+        grid.offsetWidth;
+        grid.style.transition = `padding-right ${duration}ms ${ease}`;
+        grid.style.paddingRight = `${padTo}px`;
+
+        if (show) {
+            // Reveal real scrollbar ~midway (ease-out is already mostly done)
+            showSbTimer = setTimeout(() => {
+                if (finished) return;
+                const currentPad = parseFloat(getComputedStyle(grid).paddingRight) || padTo;
+                grid.style.transition = 'none';
+                textView?.classList.remove('lyrics-scrollbar-off');
+                // currentPad - sb keeps content width continuous
+                const swapped = Math.max(0, currentPad - sb);
+                grid.style.paddingRight = `${swapped}px`;
+                grid.offsetWidth;
+                const rest = Math.round(duration * 0.5);
+                grid.style.transition = `padding-right ${rest}ms ${ease}`;
+                grid.style.paddingRight = `${fromPad}px`;
+                endTimer = setTimeout(stop, rest + 30);
+            }, Math.round(duration * 0.35));
+        } else {
+            grid.addEventListener('transitionend', onEnd);
+            endTimer = setTimeout(stop, duration + 40);
+        }
     });
+
     document.querySelectorAll('[data-action="toggle-scroll"]').forEach(btn => {
-        btn.classList.toggle('active', lyricScroll);
+        btn.classList.toggle('active', show);
     });
 }
 
