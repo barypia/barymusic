@@ -110,8 +110,8 @@ function getFilteredSonglist(query = '', songs = null) {
     return source.filter(song => _matchesSonglistFilters(song, filters, normalizedQuery));
 }
 
-const _songlistActiveClass = 'px-1 py-2 rounded-xl text-left transition-all text-[0.85rem] w-full bg-[color-mix(in_srgb,_var(--color-accent)_12%,_transparent)] text-(--color-accent-hover) font-medium';
-const _songlistInactiveClass = 'px-1 py-2 rounded-xl text-left transition-all text-[0.85rem] w-full hover:text-accent text-fg cursor-pointer';
+const _songlistActiveClass = 'px-1 py-2 rounded-xl text-left transition-all text-[0.85rem] w-[calc(100%-4px)] bg-[color-mix(in_srgb,_var(--color-accent)_12%,_transparent)] text-(--color-accent-hover) font-medium';
+const _songlistInactiveClass = 'px-1 py-2 rounded-xl text-left transition-all text-[0.85rem] w-[calc(100%-4px)] hover:text-accent text-fg cursor-pointer';
 
 function _setSonglistItemSelected(element, selected) {
     element.className = selected ? _songlistActiveClass : _songlistInactiveClass;
@@ -455,8 +455,9 @@ const refreshPanelContent = {
 
         requestAnimationFrame(() => {
             const scrollBtn = viewBody.querySelector('[data-action="toggle-scroll"]');
-            const isWithoutScroll = scrollBtn && grid && grid.scrollHeight <= grid.clientHeight;
-            setElementDisplay(scrollBtn, !isWithoutScroll)
+            const isWithoutScroll = grid && grid.scrollHeight <= grid.clientHeight + 1;
+            setElementDisplay(scrollBtn, !isWithoutScroll);
+            syncLyricScrollbarForContent();
             if (!hasChords && !hasTimestamps && isWithoutScroll) {
                 setElementDisplay(viewBody.querySelector('.view-header-controls'), false);
             }
